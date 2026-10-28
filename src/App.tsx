@@ -7,6 +7,7 @@ import Lists from "./pages/Lists";
 import ListDetail from "./pages/ListDetail";
 import Planning from "./pages/Planning";
 import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
 import Settings from "./pages/Settings";
 import Statistics from "./pages/Statistics";
 import Supermarket from "./pages/Supermarket";
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/lists/:id" element={<ListDetail />} />
       <Route path="/planning" element={<Planning />} />
       <Route path="/products" element={<Products />} />
+      <Route path="/products/:id" element={<ProductDetail />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/statistics" element={<Statistics />} />
       <Route path="/supermarket" element={<Supermarket />} />
