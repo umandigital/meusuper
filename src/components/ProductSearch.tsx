@@ -9,7 +9,7 @@ export default function ProductSearch({ onPick }: { onPick: (p: Product) => void
   const [creating, setCreating] = useState(false);
   const [sector, setSector] = useState("outros");
   const qc = useQueryClient();
-  const { data = [] } = useQuery({ queryKey: ["search", term], queryFn: () => searchProducts(term), enabled: term.trim().length > 0 });
+  const { data = [], isFetching } = useQuery({ queryKey: ["search", term], queryFn: () => searchProducts(term), enabled: term.trim().length > 0 });
 
   const exact = data.some((p) => p.name.toLowerCase() === term.trim().toLowerCase());
 
@@ -45,7 +45,7 @@ export default function ProductSearch({ onPick }: { onPick: (p: Product) => void
               </button>
             </li>
           ))}
-          {!exact && (
+          {!exact && !isFetching && (
             <li>
               {creating ? (
                 <div className="create">
