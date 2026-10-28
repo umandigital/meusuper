@@ -16,3 +16,15 @@ eq([s.total, s.fresh, s.withoutPrice, s.items], [60, 1, 1, 2], "totais");
 
 import { autoListName } from "../src/lib/stores.ts";
 eq(autoListName(new Date("2026-10-28T23:45:00Z")), "28/10/2026 20:45", "nome automatico da lista (horario de Brasilia)");
+
+import { periodFor } from "../src/lib/period.ts";
+const per = (d: string, day: number, off = 0) => { const p = periodFor(new Date(d + "T12:00:00"), day, off); return [p.start, p.end, p.label, p.monthKey]; };
+eq(per("2026-10-28", 10), ["2026-10-10", "2026-11-09", "Outubro 2026", "2026-10-01"], "periodo: dia 28/10 com inicio no dia 10");
+eq(per("2026-10-05", 10), ["2026-09-10", "2026-10-09", "Setembro 2026", "2026-09-01"], "periodo: dia 05/10 ainda e o mes fiscal de setembro");
+eq(per("2026-10-10", 10), ["2026-10-10", "2026-11-09", "Outubro 2026", "2026-10-01"], "periodo: no proprio dia de inicio");
+eq(per("2026-01-05", 10), ["2025-12-10", "2026-01-09", "Dezembro 2025", "2025-12-01"], "periodo: virada de ano");
+eq(per("2026-10-28", 10, -1), ["2026-09-10", "2026-10-09", "Setembro 2026", "2026-09-01"], "periodo: mes anterior");
+eq(per("2026-12-20", 10, 1), ["2027-01-10", "2027-02-09", "Janeiro 2027", "2027-01-01"], "periodo: proximo mes cruza o ano");
+eq(per("2026-02-15", 1), ["2026-02-01", "2026-02-28", "Fevereiro 2026", "2026-02-01"], "periodo: inicio no dia 1 (fevereiro)");
+eq(per("2028-02-15", 1), ["2028-02-01", "2028-02-29", "Fevereiro 2028", "2028-02-01"], "periodo: fevereiro bissexto");
+eq(per("2026-03-20", 28), ["2026-02-28", "2026-03-27", "Fevereiro 2026", "2026-02-01"], "periodo: inicio no dia 28 (20/03 ainda e o periodo de fevereiro)");
