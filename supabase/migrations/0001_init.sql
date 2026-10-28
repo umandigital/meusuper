@@ -24,7 +24,7 @@ insert into public.sectors (value, label, emoji, position) values
   ('outros','Bazar / Outros','📦',13);
 
 alter table public.sectors enable row level security;
-create policy "sectors readable" on public.sectors for select using (true);
+create policy "sectors readable" on public.sectors for select to authenticated using (true);
 
 create table public.settings (
   user_id uuid primary key references auth.users on delete cascade default auth.uid(),
@@ -39,7 +39,7 @@ create table public.products (
   name text not null,
   sector text not null references public.sectors,
   unit text not null default 'un' check (unit in ('un','kg','l','pct')),
-  reference_price numeric(10,2),          -- estimativa do catalogo (marcada como "estimado")
+  reference_price numeric(10,2) check (reference_price >= 0),          -- estimativa do catalogo (marcada como "estimado")
   created_at timestamptz not null default now()
 );
 create unique index products_name_owner on public.products (lower(name), coalesce(user_id, '00000000-0000-0000-0000-000000000000'));
@@ -75,7 +75,7 @@ create table public.prices (
   product_id uuid not null references public.products on delete cascade,
   brand_id uuid references public.brands on delete set null,
   store_id uuid references public.stores on delete set null,
-  price numeric(10,2) not null,
+  price numeric(10,2) not null check (price >= 0),
   paid_at date not null default current_date,
   source text not null default 'manual' check (source in ('manual','scan','receipt'))
 );
@@ -95,7 +95,7 @@ create table public.list_items (
   list_id uuid not null references public.lists on delete cascade,
   product_id uuid not null references public.products on delete cascade,
   brand_id uuid references public.brands on delete set null,
-  quantity numeric(10,3) not null default 1,
+  quantity numeric(10,3) not null default 1 check (quantity > 0),
   checked boolean not null default false,
   paid_price numeric(10,2)               -- preco real informado no mercado
 );
@@ -105,7 +105,7 @@ create table public.purchases (
   user_id uuid not null references auth.users on delete cascade default auth.uid(),
   store_id uuid references public.stores on delete set null,
   list_id uuid references public.lists on delete set null,
-  total numeric(10,2) not null,
+  total numeric(10,2) not null check (total >= 0),
   purchased_at date not null default current_date,
   notes text
 );
@@ -116,8 +116,8 @@ create table public.purchase_items (
   purchase_id uuid not null references public.purchases on delete cascade,
   product_id uuid references public.products on delete set null,
   brand_id uuid references public.brands on delete set null,
-  quantity numeric(10,3) not null default 1,
-  unit_price numeric(10,2) not null
+  quantity numeric(10,3) not null default 1 check (quantity > 0),
+  unit_price numeric(10,2) not null check (unit_price >= 0)
 );
 
 create table public.general_expenses (
@@ -127,7 +127,7 @@ create table public.general_expenses (
   amount numeric(10,2) not null,
   spent_at date not null default current_date,
   card text,
-  installments int not null default 1,
+  installments int not null default 1 check (installments >= 1),
   fixed boolean not null default false
 );
 
@@ -138,7 +138,7 @@ create table public.monthly_plan (
   kind text not null check (kind in ('income','fixed_expense','credit_card','general_budget','supermarket_budget')),
   description text,
   amount numeric(10,2) not null,
-  installments int not null default 1
+  installments int not null default 1 check (installments >= 1)
 );
 
 create table public.sector_budgets (
@@ -150,25 +150,69 @@ create table public.sector_budgets (
   unique (user_id, month, sector)
 );
 
--- RLS: tabelas 100% do usuario
+-- Indices: Postgres nao indexa FK sozinho, e as policies filtram por user_id.
+create index products_sector_idx on public.products (sector);
+create index product_brands_user_idx on public.product_brands (user_id);
+create index product_brands_product_idx on public.product_brands (product_id);
+create index product_brands_brand_idx on public.product_brands (brand_id);
+create index stores_user_idx on public.stores (user_id);
+create index prices_product_idx on public.prices (product_id);
+create index prices_brand_idx on public.prices (brand_id);
+create index prices_store_idx on public.prices (store_id);
+create index lists_user_idx on public.lists (user_id, created_at desc);
+create index list_items_user_idx on public.list_items (user_id);
+create index list_items_list_idx on public.list_items (list_id);
+create index list_items_product_idx on public.list_items (product_id);
+create index list_items_brand_idx on public.list_items (brand_id);
+create index purchases_user_date_idx on public.purchases (user_id, purchased_at desc);
+create index purchases_store_idx on public.purchases (store_id);
+create index purchases_list_idx on public.purchases (list_id);
+create index purchase_items_user_idx on public.purchase_items (user_id);
+create index purchase_items_purchase_idx on public.purchase_items (purchase_id);
+create index purchase_items_product_idx on public.purchase_items (product_id);
+create index purchase_items_brand_idx on public.purchase_items (brand_id);
+create index general_expenses_user_date_idx on public.general_expenses (user_id, spent_at desc);
+create index monthly_plan_user_month_idx on public.monthly_plan (user_id, month);
+
+-- RLS: tabelas 100% do usuario. (select auth.uid()) avalia uma vez por consulta, nao por linha.
 do $$
 declare t text;
 begin
   foreach t in array array['settings','product_brands','stores','prices','lists','list_items','purchases','purchase_items','general_expenses','monthly_plan','sector_budgets'] loop
     execute format('alter table public.%I enable row level security', t);
-    execute format('create policy "own rows" on public.%I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+    execute format('create policy "own rows" on public.%I for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
   end loop;
 end $$;
 
--- Catalogo base (user_id nulo) e leitura para todos; escrita so nas proprias linhas.
-alter table public.products enable row level security;
-create policy "read catalog and own" on public.products for select using (user_id is null or user_id = auth.uid());
-create policy "write own" on public.products for insert with check (user_id = auth.uid());
-create policy "update own" on public.products for update using (user_id = auth.uid());
-create policy "delete own" on public.products for delete using (user_id = auth.uid());
+-- Catalogo base (user_id nulo): leitura para logados; escrita so nas proprias linhas.
+do $$
+declare t text;
+begin
+  foreach t in array array['products','brands'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('create policy "read catalog and own" on public.%I for select to authenticated using (user_id is null or user_id = (select auth.uid()))', t);
+    execute format('create policy "insert own" on public.%I for insert to authenticated with check (user_id = (select auth.uid()))', t);
+    execute format('create policy "update own" on public.%I for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
+    execute format('create policy "delete own" on public.%I for delete to authenticated using (user_id = (select auth.uid()))', t);
+  end loop;
+end $$;
 
-alter table public.brands enable row level security;
-create policy "read catalog and own" on public.brands for select using (user_id is null or user_id = auth.uid());
-create policy "write own" on public.brands for insert with check (user_id = auth.uid());
-create policy "update own" on public.brands for update using (user_id = auth.uid());
-create policy "delete own" on public.brands for delete using (user_id = auth.uid());
+-- Busca sem acento ("acucar" acha "Açúcar"). security invoker: a RLS de products continua valendo.
+create extension if not exists unaccent with schema extensions;
+
+create or replace function public.search_products(q text)
+returns setof public.products
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select p.*
+  from public.products p
+  where extensions.unaccent(p.name) ilike '%' || extensions.unaccent(q) || '%'
+  order by
+    (p.user_id is null),                                                        -- meus produtos primeiro
+    not (extensions.unaccent(lower(p.name)) like extensions.unaccent(lower(q)) || '%'),  -- comeca com o termo
+    p.name
+  limit 12;
+$$;
