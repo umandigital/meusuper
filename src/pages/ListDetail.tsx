@@ -44,7 +44,20 @@ export default function ListDetail() {
   };
 
   const add = useMutation({ mutationFn: (productId: string) => addItem(id, productId), onSuccess: refresh });
-  const patch = useMutation({ mutationFn: (a: { id: string; p: Parameters<typeof updateItem>[1] }) => updateItem(a.id, a.p), onSuccess: refresh });
+  // atualiza a tela na hora (no mercado a internet oscila) e desfaz se o servidor recusar
+  const patch = useMutation({
+    mutationFn: (a: { id: string; p: Parameters<typeof updateItem>[1] }) => updateItem(a.id, a.p),
+    onMutate: async (a) => {
+      await qc.cancelQueries({ queryKey: ["items", id] });
+      const previous = qc.getQueryData<ListItemWithProduct[]>(["items", id]);
+      qc.setQueryData<ListItemWithProduct[]>(["items", id], (old) => old?.map((i) => (i.id === a.id ? { ...i, ...a.p } : i)));
+      return { previous };
+    },
+    onError: (_err, _a, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["items", id], ctx.previous);
+    },
+    onSettled: refresh,
+  });
   const del = useMutation({ mutationFn: removeItem, onSuccess: refresh });
   const changeStore = useMutation({ mutationFn: (s: StoreName) => setListStore(id, s), onSuccess: () => qc.invalidateQueries({ queryKey: ["list", id] }) });
 
@@ -66,13 +79,23 @@ export default function ListDetail() {
     }
   }
 
-  /** Poe o produto no carrinho: marca o item da lista se ele ja esta la, ou cria um item novo. */
+  /**
+   * Poe o produto no carrinho: marca o item da lista se ele ja esta la; se ja estava no carrinho
+   * (escaneou de novo), soma uma unidade; senao cria um item novo.
+   */
   async function putInCart(productId: string, brandId: string | null): Promise<string> {
-    const existing = itemsRef.current.find((i) => i.product_id === productId && !i.checked);
-    if (existing) {
-      await updateItem(existing.id, { checked: true, brand_id: brandId ?? existing.brand_id });
+    const same = itemsRef.current.filter((i) => i.product_id === productId);
+    const pending = same.find((i) => !i.checked);
+    if (pending) {
+      await updateItem(pending.id, { checked: true, brand_id: brandId ?? pending.brand_id });
       refresh();
-      return existing.id;
+      return pending.id;
+    }
+    const inCartAlready = same.find((i) => i.brand_id === brandId);
+    if (inCartAlready) {
+      await updateItem(inCartAlready.id, { quantity: Number(inCartAlready.quantity) + 1 });
+      refresh();
+      return inCartAlready.id;
     }
     const newId = await addItem(id, productId, brandId, true);
     refresh();

@@ -74,7 +74,8 @@ button { cursor: pointer; }
 .create { display: flex; gap: 8px; padding: 10px; }
 .sector { font-size: 15px; margin: 20px 0 8px; color: hsl(var(--muted-foreground)); }
 .items li { display: grid; grid-template-columns: 24px 1fr auto auto; align-items: center; gap: 6px 10px; padding: 12px; margin-bottom: 8px; background: hsl(var(--card)); border: 1px solid hsl(var(--muted)); border-radius: 14px; }
-.items li.done { opacity: .55; text-decoration: line-through; }
+.items li.done .name { opacity: .6; text-decoration: line-through; }
+.items li.done .price { opacity: .85; }
 .items .name { min-width: 0; overflow-wrap: anywhere; }
 .items .meta { grid-column: 2 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .items select { padding: 6px 10px; font-size: 13px; width: auto; min-width: 0; flex: 1; }
