@@ -42,9 +42,14 @@ export async function getListItems(listId: string): Promise<ListItemWithProduct[
   return data as unknown as ListItemWithProduct[];
 }
 
-export async function addItem(listId: string, productId: string, brandId: string | null = null) {
-  const { error } = await supabase.from("list_items").insert({ list_id: listId, product_id: productId, brand_id: brandId });
+export async function addItem(listId: string, productId: string, brandId: string | null = null, checked = false): Promise<string> {
+  const { data, error } = await supabase
+    .from("list_items")
+    .insert({ list_id: listId, product_id: productId, brand_id: brandId, checked })
+    .select("id")
+    .single();
   if (error) throw error;
+  return data.id as string;
 }
 
 export async function updateItem(id: string, patch: Partial<Pick<ListItem, "brand_id" | "quantity" | "checked" | "paid_price">>) {

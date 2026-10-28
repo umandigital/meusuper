@@ -27,3 +27,12 @@ export async function createBrand(name: string): Promise<Brand> {
   if (error) throw error;
   return data as Brand;
 }
+
+/** Marca existente (sem diferenciar maiusculas) ou nova. */
+export async function findOrCreateBrand(name: string): Promise<Brand> {
+  const clean = name.trim();
+  const { data, error } = await supabase.from("brands").select("*").ilike("name", clean).limit(1);
+  if (error) throw error;
+  if (data.length) return data[0] as Brand;
+  return createBrand(clean);
+}
