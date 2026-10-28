@@ -14,9 +14,10 @@ export default defineConfig({
         description: "MeuSuper",
         lang: "pt-BR",
         start_url: "/",
+        orientation: "portrait",
         display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#16a34a",
+        background_color: "#f8faf9",
+        theme_color: "#10b981",
         icons: [
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
