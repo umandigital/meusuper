@@ -1,0 +1,15 @@
+import { estimateUnitPrice, summarize } from "../src/lib/estimate.ts";
+const prod: any = { id: "p1", name: "Arroz 5kg", reference_price: 27.9 };
+const today = new Date("2026-10-28T00:00:00");
+const mk = (brand: string | null, price: number, d: string): any => ({ id: Math.random()+"", product_id: "p1", brand_id: brand, price, paid_at: d });
+const eq = (a: any, b: any, m: string) => { if (JSON.stringify(a) !== JSON.stringify(b)) { console.log("FAIL", m, a, b); process.exitCode = 1; } else console.log("ok", m); };
+eq(estimateUnitPrice(prod, null, [], today).source, "reference", "sem historico usa referencia");
+const r = estimateUnitPrice(prod, null, [], today); eq([+r.low.toFixed(2), +r.high.toFixed(2)], [23.71, 32.08], "faixa +-15%");
+const ps = [mk("A", 30, "2026-10-20"), mk("A", 26, "2026-09-01"), mk("B", 24, "2026-10-10")];
+eq(estimateUnitPrice(prod, "A", ps, today).unit, 30, "marca A = ultimo preco");
+eq(estimateUnitPrice(prod, null, ps, today).unit, 27, "sem marca = mediana dos ultimos por marca (30,24)");
+const e = estimateUnitPrice(prod, "A", ps, today); eq([e.low, e.high, e.fresh], [26, 30, true], "faixa e fresco");
+eq(estimateUnitPrice(prod, "A", [mk("A", 20, "2026-06-01")], today).fresh, false, "preco antigo");
+eq(estimateUnitPrice(prod, "Z", ps, today).unit, 27, "marca sem historico cai para o produto");
+const s = summarize([{ product: prod, brandId: "A", quantity: 2 }, { product: { ...prod, id: "x", reference_price: null }, brandId: null, quantity: 1 }], ps, today);
+eq([s.total, s.fresh, s.withoutPrice, s.items], [60, 1, 1, 2], "totais");

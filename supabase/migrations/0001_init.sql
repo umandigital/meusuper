@@ -35,7 +35,7 @@ create table public.settings (
 -- Produto = o que se quer comprar ("Arroz 5kg"). Marca e opcional e fica em product_brands.
 create table public.products (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade,
+  user_id uuid references auth.users on delete cascade default auth.uid(),
   name text not null,
   sector text not null references public.sectors,
   unit text not null default 'un' check (unit in ('un','kg','l','pct')),
@@ -46,7 +46,7 @@ create unique index products_name_owner on public.products (lower(name), coalesc
 
 create table public.brands (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade,
+  user_id uuid references auth.users on delete cascade default auth.uid(),
   name text not null
 );
 create unique index brands_name_owner on public.brands (lower(name), coalesce(user_id, '00000000-0000-0000-0000-000000000000'));
