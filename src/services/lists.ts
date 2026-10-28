@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import type { StoreName } from "../lib/stores";
 import type { ListItem, Price, Product, ShoppingList } from "../types/db";
 
 export type ListItemWithProduct = ListItem & { product: Product };
@@ -15,10 +16,15 @@ export async function getList(id: string): Promise<ShoppingList> {
   return data as ShoppingList;
 }
 
-export async function createList(name: string): Promise<ShoppingList> {
-  const { data, error } = await supabase.from("lists").insert({ name: name.trim() }).select().single();
+export async function createList(name: string, store: StoreName): Promise<ShoppingList> {
+  const { data, error } = await supabase.from("lists").insert({ name: name.trim(), store }).select().single();
   if (error) throw error;
   return data as ShoppingList;
+}
+
+export async function setListStore(id: string, store: StoreName) {
+  const { error } = await supabase.from("lists").update({ store }).eq("id", id);
+  if (error) throw error;
 }
 
 export async function deleteList(id: string) {

@@ -36,6 +36,7 @@ export interface Price {
 export interface ShoppingList {
   id: string;
   name: string;
+  store: "Nicolini" | "Peruzzo" | null;
   archived: boolean;
   created_at: string;
 }

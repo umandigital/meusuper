@@ -85,3 +85,6 @@ button { cursor: pointer; }
 .price { text-align: right; min-width: 72px; }
 .price small { display: block; color: hsl(var(--accent)); }
 .price small.warn { color: hsl(var(--destructive)); }
+.row select { width: auto; flex: 1; }
+.store-pick { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: hsl(var(--muted-foreground)); }
+.store-pick select { width: auto; }

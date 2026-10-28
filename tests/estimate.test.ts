@@ -13,3 +13,6 @@ eq(estimateUnitPrice(prod, "A", [mk("A", 20, "2026-06-01")], today).fresh, false
 eq(estimateUnitPrice(prod, "Z", ps, today).unit, 27, "marca sem historico cai para o produto");
 const s = summarize([{ product: prod, brandId: "A", quantity: 2 }, { product: { ...prod, id: "x", reference_price: null }, brandId: null, quantity: 1 }], ps, today);
 eq([s.total, s.fresh, s.withoutPrice, s.items], [60, 1, 1, 2], "totais");
+
+import { autoListName } from "../src/lib/stores.ts";
+eq(autoListName(new Date("2026-10-28T23:45:00Z")), "28/10/2026 20:45", "nome automatico da lista (horario de Brasilia)");

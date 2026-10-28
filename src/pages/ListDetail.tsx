@@ -3,10 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ProductSearch from "../components/ProductSearch";
 import { createBrand, listBrands } from "../services/catalog";
-import { addItem, getList, getListItems, getPrices, removeItem, updateItem, type ListItemWithProduct } from "../services/lists";
+import { addItem, getList, setListStore, getListItems, getPrices, removeItem, updateItem, type ListItemWithProduct } from "../services/lists";
 import { estimateUnitPrice, summarize } from "../lib/estimate";
 import { formatBRL } from "../lib/format";
 import { SECTORS } from "../lib/sectors";
+import { STORES, type StoreName } from "../lib/stores";
 import type { Price } from "../types/db";
 
 const NEW_BRAND = "__new__";
@@ -25,6 +26,7 @@ export default function ListDetail() {
   const add = useMutation({ mutationFn: (productId: string) => addItem(id, productId), onSuccess: refresh });
   const patch = useMutation({ mutationFn: (a: { id: string; p: Parameters<typeof updateItem>[1] }) => updateItem(a.id, a.p), onSuccess: refresh });
   const del = useMutation({ mutationFn: removeItem, onSuccess: refresh });
+  const changeStore = useMutation({ mutationFn: (s: StoreName) => setListStore(id, s), onSuccess: () => qc.invalidateQueries({ queryKey: ["list", id] }) });
 
   const totals = summarize(items.map((i) => ({ product: i.product, brandId: i.brand_id, quantity: i.quantity })), prices);
 
@@ -46,6 +48,15 @@ export default function ListDetail() {
     <main>
       <Link to="/lists" className="back">← Listas</Link>
       <h1>{list?.name}</h1>
+      <label className="store-pick">
+        Mercado
+        <select value={list?.store ?? ""} onChange={(e) => changeStore.mutate(e.target.value as StoreName)}>
+          {!list?.store && <option value="" disabled>Escolha…</option>}
+          {STORES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </label>
 
       <section className="summary">
         <div className="total">{formatBRL(totals.total)}</div>
