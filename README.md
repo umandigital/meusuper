@@ -12,7 +12,7 @@ src/hooks/         hooks
 src/services/      acesso a dados (Supabase)
 src/lib/           cliente Supabase e utilitários
 src/types/         tipos
-supabase/migrations/  SQL do banco
+supabase/            banco: baseline/ (esquema inicial), migrations/ (mudanças), seed.sql (catálogo)
 docs/              documentação
 ```
 
