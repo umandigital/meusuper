@@ -8,5 +8,5 @@ export function usePeriod() {
   const [offset, setOffset] = useState(0);
   const { data: startDay, isLoading } = useQuery({ queryKey: ["start-day"], queryFn: getStartDay });
   const period = startDay ? periodFor(new Date(), startDay, offset) : null;
-  return { period, offset, setOffset, isLoading };
+  return { period, offset, setOffset, isLoading, startDay };
 }

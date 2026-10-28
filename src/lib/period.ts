@@ -29,3 +29,12 @@ export function periodFor(ref: Date, startDay: number, offset = 0): Period {
 
 /** "2026-10-10" -> "10/10" */
 export const shortDate = (isoDate: string) => `${isoDate.slice(8, 10)}/${isoDate.slice(5, 7)}`;
+
+/** Hoje (YYYY-MM-DD) no fuso do aparelho, sem passar por UTC. */
+export const todayIso = () => iso(new Date());
+
+/** "2026-10-01" + 2 -> "2026-12-01" */
+export function shiftMonthKey(monthKey: string, delta: number): string {
+  const d = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)) - 1 + delta, 1);
+  return iso(d);
+}
