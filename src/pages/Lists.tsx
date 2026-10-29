@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createList, deleteList, getLists } from "../services/lists";
+import { getLatestPurchaseId, repeatPurchase } from "../services/purchases";
 import { autoListName, STORES, type StoreName } from "../lib/stores";
 
 const LAST_STORE_KEY = "meusuper:lastStore";
@@ -28,6 +29,14 @@ export default function Lists() {
       navigate(`/lists/${l.id}`);
     },
   });
+  const { data: latestId } = useQuery({ queryKey: ["latest-purchase"], queryFn: getLatestPurchaseId });
+  const repeat = useMutation({
+    mutationFn: () => repeatPurchase(latestId!),
+    onSuccess: (listId) => {
+      qc.invalidateQueries({ queryKey: ["lists"] });
+      navigate(`/lists/${listId}`);
+    },
+  });
   const remove = useMutation({
     mutationFn: deleteList,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lists"] }),
@@ -50,6 +59,10 @@ export default function Lists() {
         </select>
         <button type="submit" disabled={create.isPending}>Nova lista</button>
       </form>
+      {latestId && (
+        <button type="button" className="link" onClick={() => repeat.mutate()} disabled={repeat.isPending}>🔁 Repetir a última compra</button>
+      )}
+      {repeat.isError && <p className="error">Não foi possível repetir a compra. Tente novamente.</p>}
       {create.isError && <p className="error">Não foi possível criar a lista. Tente novamente.</p>}
       {isLoading && <p className="muted">Carregando…</p>}
       {!isLoading && !lists.length && <p className="muted">Nenhuma lista. Escolha o mercado e toque em “Nova lista”.</p>}

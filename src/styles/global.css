@@ -180,3 +180,15 @@ select.mini { width: auto; max-width: 55%; padding: 6px 10px; font-size: 13px; }
 .tut p { margin: 4px 0 0; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.45; }
 
 .compare-stores { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; }
+
+.suggest { margin: 4px 0 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chips button { padding: 8px 12px; border: 1px solid hsl(var(--muted)); border-radius: 999px; background: hsl(var(--card)); font-size: 13px; }
+.chips small { color: hsl(var(--muted-foreground)); }
+.purchase-actions { display: flex; gap: 8px; padding: 0 16px 14px; }
+.purchase-actions > * { flex: 1; padding: 10px 6px; border: 1px solid hsl(var(--muted)); border-radius: 12px; background: hsl(var(--card)); text-align: center; text-decoration: none; color: inherit; font-size: 14px; }
+.purchase-actions .danger-text { color: hsl(var(--destructive)); border-color: hsl(var(--destructive)); }
+.edit-row { grid-template-columns: 1fr auto !important; }
+.edit-row .meta { grid-column: 1 / -1 !important; }
+.edit-row .meta label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: hsl(var(--muted-foreground)); flex: 1; }
+.edit-row .meta input { width: 100%; padding: 8px 10px; text-align: right; }

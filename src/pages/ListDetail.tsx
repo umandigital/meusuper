@@ -6,7 +6,7 @@ import BarcodeScanner from "../components/BarcodeScanner";
 import NewCodeSheet, { type NewCodeResult } from "../components/NewCodeSheet";
 import { createBrand, findOrCreateBrand, listBrands } from "../services/catalog";
 import { findByBarcode, saveBarcode } from "../services/barcode";
-import { addItem, getBrandLinks, getList, getListItems, getPrices, removeItem, setListStore, updateItem, type ListItemWithProduct } from "../services/lists";
+import { addItem, getBrandLinks, getFrequentProducts, getList, getListItems, getPrices, removeItem, setListStore, updateItem, type ListItemWithProduct } from "../services/lists";
 import { finishPurchase } from "../services/purchases";
 import { estimateUnitPrice, summarize } from "../lib/estimate";
 import { formatBRL } from "../lib/format";
@@ -36,6 +36,7 @@ export default function ListDetail() {
 
   const { data: links = [] } = useQuery({ queryKey: ["brand-links", productIds], queryFn: () => getBrandLinks(productIds), enabled: productIds.length > 0 });
   const storeName = list?.store ?? null;
+  const { data: frequent = [] } = useQuery({ queryKey: ["frequent"], queryFn: () => getFrequentProducts() });
 
   // o leitor chama estas funcoes de dentro de um callback: precisam enxergar sempre o estado atual
   const itemsRef = useRef(items);
@@ -49,6 +50,7 @@ export default function ListDetail() {
   };
 
   const add = useMutation({ mutationFn: (productId: string) => addItem(id, productId), onSuccess: refresh });
+  const addFrequent = useMutation({ mutationFn: (f: { product: { id: string }; brand_id: string | null; lastQty: number }) => addItem(id, f.product.id, f.brand_id, false, f.lastQty), onSuccess: refresh });
   // atualiza a tela na hora (no mercado a internet oscila) e desfaz se o servidor recusar
   const patch = useMutation({
     mutationFn: (a: { id: string; p: Parameters<typeof updateItem>[1] }) => updateItem(a.id, a.p),
@@ -193,6 +195,9 @@ export default function ListDetail() {
     if (confirm(msg)) finish.mutate();
   }
 
+  const inList = new Set(items.map((i) => i.product_id));
+  const suggestions = frequent.filter((f) => !inList.has(f.product.id)).slice(0, 8);
+
   const bySector = SECTORS.map((s) => ({ sector: s, items: items.filter((i) => i.product.sector === s.value) })).filter((g) => g.items.length);
 
   return (
@@ -239,6 +244,17 @@ export default function ListDetail() {
       </div>
 
       {!items.length && <p className="muted">Adicione itens usando o campo acima.</p>}
+
+      {suggestions.length > 0 && (
+        <section className="suggest">
+          <div className="muted small">Você costuma comprar:</div>
+          <div className="chips">
+            {suggestions.map((f) => (
+              <button key={f.product.id} type="button" onClick={() => addFrequent.mutate(f)}>＋ {f.product.name} <small>×{f.count}</small></button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {bySector.map(({ sector, items: group }) => (
         <section key={sector.value}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getPurchaseItems, getPurchases, type PurchaseRow } from "../services/purchases";
+import { Link, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { deletePurchase, getPurchaseItems, getPurchases, repeatPurchase, type PurchaseRow } from "../services/purchases";
 import { formatBRL } from "../lib/format";
 
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
@@ -21,6 +22,21 @@ export default function History() {
 
 function PurchaseCard({ p }: { p: PurchaseRow }) {
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const remove = useMutation({
+    mutationFn: () => deletePurchase(p.id),
+    onSuccess: () => {
+      for (const k of ["purchases", "prices", "last-prices", "product-prices", "month", "purchases-in", "series", "sold"]) qc.invalidateQueries({ queryKey: [k] });
+    },
+  });
+  const repeat = useMutation({
+    mutationFn: () => repeatPurchase(p.id),
+    onSuccess: (listId) => {
+      qc.invalidateQueries({ queryKey: ["lists"] });
+      navigate(`/lists/${listId}`);
+    },
+  });
   const { data: items = [] } = useQuery({ queryKey: ["purchase-items", p.id], queryFn: () => getPurchaseItems(p.id), enabled: open });
   return (
     <li className="purchase">
@@ -41,6 +57,21 @@ function PurchaseCard({ p }: { p: PurchaseRow }) {
           ))}
         </ul>
       )}
+      {open && (
+        <div className="purchase-actions">
+          <button type="button" onClick={() => repeat.mutate()} disabled={repeat.isPending}>🔁 Repetir</button>
+          <Link to={`/history/${p.id}`}>✏️ Editar</Link>
+          <button
+            type="button"
+            className="danger-text"
+            disabled={remove.isPending}
+            onClick={() => confirm(`Excluir a compra de ${fmtDate(p.purchased_at)} (${formatBRL(Number(p.total))})?\nOs preços dela também saem do histórico de preços.`) && remove.mutate()}
+          >
+            🗑️ Excluir
+          </button>
+        </div>
+      )}
+      {(repeat.isError || remove.isError) && <p className="error" style={{ padding: "0 16px 12px" }}>Não foi possível concluir. Tente novamente.</p>}
     </li>
   );
 }

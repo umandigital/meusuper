@@ -42,10 +42,10 @@ export async function getListItems(listId: string): Promise<ListItemWithProduct[
   return data as unknown as ListItemWithProduct[];
 }
 
-export async function addItem(listId: string, productId: string, brandId: string | null = null, checked = false): Promise<string> {
+export async function addItem(listId: string, productId: string, brandId: string | null = null, checked = false, quantity = 1): Promise<string> {
   const { data, error } = await supabase
     .from("list_items")
-    .insert({ list_id: listId, product_id: productId, brand_id: brandId, checked })
+    .insert({ list_id: listId, product_id: productId, brand_id: brandId, checked, quantity })
     .select("id")
     .single();
   if (error) throw error;
@@ -80,4 +80,36 @@ export async function getBrandLinks(productIds: string[]): Promise<{ product_id:
   const { data, error } = await supabase.from("product_brands").select("product_id, brand_id").in("product_id", productIds);
   if (error) throw error;
   return data as { product_id: string; brand_id: string | null }[];
+}
+
+export async function addItems(listId: string, rows: { product_id: string; brand_id: string | null; quantity: number }[]) {
+  if (!rows.length) return;
+  const { error } = await supabase.from("list_items").insert(rows.map((r) => ({ ...r, list_id: listId })));
+  if (error) throw error;
+}
+
+export interface Frequent {
+  product: Product;
+  brand_id: string | null;
+  count: number;
+  lastQty: number;
+}
+
+/** Produtos que voce mais compra (pelas compras finalizadas), com a ultima marca e quantidade usadas. */
+export async function getFrequentProducts(limit = 12): Promise<Frequent[]> {
+  const { data, error } = await supabase
+    .from("purchase_items")
+    .select("product_id, brand_id, quantity, product:products(*), purchase:purchases!inner(purchased_at)")
+    .limit(600);
+  if (error) throw error;
+  const rows = (data as unknown as { product_id: string | null; brand_id: string | null; quantity: number; product: Product | null; purchase: { purchased_at: string } }[])
+    .filter((r) => r.product)
+    .sort((a, b) => b.purchase.purchased_at.localeCompare(a.purchase.purchased_at));
+  const map = new Map<string, Frequent>();
+  for (const r of rows) {
+    const cur = map.get(r.product_id!);
+    if (cur) cur.count += 1;
+    else map.set(r.product_id!, { product: r.product!, brand_id: r.brand_id, count: 1, lastQty: Number(r.quantity) });
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count).slice(0, limit);
 }
