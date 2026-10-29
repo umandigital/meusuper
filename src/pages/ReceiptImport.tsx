@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import BarcodeScanner from "../components/BarcodeScanner";
 import ProductSearch from "../components/ProductSearch";
-import { accessKeyOf, aliasKey, matchProduct, receiptUrlOf, type Receipt } from "../lib/nfce";
+import { accessKeyOf, aliasKey, guessSector, matchProduct, receiptUrlOf, type Receipt } from "../lib/nfce";
 import { SECTORS } from "../lib/sectors";
 import { STORES } from "../lib/stores";
 import { formatBRL } from "../lib/format";
@@ -43,6 +43,7 @@ export default function ReceiptImport() {
   const [debug, setDebug] = useState("");
   const [copied, setCopied] = useState(false);
   const [pasted, setPasted] = useState("");
+  const [dateGuess, setDateGuess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<(Receipt & { key: string | null }) | null>(null);
   const [overrides, setOverrides] = useState<Record<number, Choice>>({});
@@ -55,6 +56,7 @@ export default function ReceiptImport() {
     const s = (r.store ?? "").toLowerCase();
     setStore(s.includes("nicolini") ? "Nicolini" : s.includes("peruzzo") ? "Peruzzo" : "");
     setDate(r.date ?? new Date().toISOString().slice(0, 10));
+    setDateGuess(!r.date);
   }
 
   function loadText() {
@@ -107,8 +109,8 @@ export default function ReceiptImport() {
   const rows: Row[] = useMemo(
     () =>
       (receipt?.items ?? []).map((it, i) => {
-        const m = matchProduct(it.name, products, aliases, it.barcode ?? null, barcodes);
-        const fallback: Choice = m ? { kind: "product", product: m.product } : { kind: "new", name: titleCase(it.name), sector: "outros" };
+        const m = matchProduct(it.name, products, aliases, it.barcode ?? null, barcodes, it.unit);
+        const fallback: Choice = m ? { kind: "product", product: m.product } : { kind: "new", name: titleCase(it.name), sector: guessSector(it.name) };
         return { ...it, suggested: m?.product ?? null, choice: overrides[i] ?? fallback };
       }),
     [receipt, products, aliases, barcodes, overrides],
@@ -186,6 +188,7 @@ export default function ReceiptImport() {
               </select>
             </label>
             <label className="store-pick">Data <input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+            {dateGuess && <p className="muted small">A data não veio no texto: coloquei hoje. Corrija se a compra foi em outro dia.</p>}
           </section>
 
           <ul className="items">
@@ -200,7 +203,7 @@ export default function ReceiptImport() {
                     onChange={(e) => {
                       const v = e.target.value;
                       if (v === "match" && r.suggested) setChoice(i, { kind: "product", product: r.suggested });
-                      else if (v === "new") setChoice(i, { kind: "new", name: titleCase(r.name), sector: "outros" });
+                      else if (v === "new") setChoice(i, { kind: "new", name: titleCase(r.name), sector: guessSector(r.name) });
                       else if (v === "skip") setChoice(i, { kind: "skip" });
                       else setChoice(i, { kind: "pick" });
                     }}

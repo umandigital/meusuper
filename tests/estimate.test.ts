@@ -248,3 +248,274 @@ eq(ca.parsedLines, 7, "cupom do app: 7 linhas lidas");
 eq(parseCupomText("texto qualquer sem itens"), null, "cupom: texto sem itens e recusado");
 // os dois layouts reais em uma linha so (quando o texto e copiado sem quebras)
 eq(parseCupomText("PAO FRANCES KG (Código: 5 ) Qtde.:0,5 UN: KG Vl. Unit.: 16,9 Vl. Total 8,45 LEITE 1L (Código: 6 ) Qtde.:2 UN: UN Vl. Unit.: 5,19 Vl. Total 10,38")?.items.map((i) => i.name + ":" + i.quantity), ["PAO FRANCES KG:0.5", "LEITE 1L:2"], "cupom: texto colado em uma linha so le todos os itens (o Vl. Total separa)");
+
+// ---- cupom REAL copiado do app do Nicolini (Cupom Verde): cada item em varias linhas
+const real = `Desenvolvido por Cupom Verde
+OSMAR NICOLINI COMERCIO E DISTRIBUICAO S.A.
+Detalhes do estabelecimento
+
+LINGUICA BORRUSSIA DEF MIGNON KG
+001
+0.246 KG    x
+R$ 59,90
+14,74
+SALSICHA EXCELSIOR DEF 18CM KG
+002
+0.934 KG    x
+R$ 18,99
+17,74
+DUETO ERVILHA E MILHO FUGINI SHT 170G
+
+GTIN: 7897517209643
+003
+1 UN    x
+R$ 4,99
+4,99
+RACAO WHISKAS CARNE SHT 85G
+
+GTIN: 7896029046609
+004
+1 UN    x
+R$ 3,49
+3,49
+RACAO WHISKAS CARNE SHT 85G
+
+GTIN: 7896029046609
+005
+1 UN    x
+R$ 3,49
+3,49
+RACAO WHISKAS CARNE SHT 85G
+
+GTIN: 7896029046609
+006
+1 UN    x
+R$ 3,49
+3,49
+MASSA INST NISSIN YAKISSOBA 500G
+
+GTIN: 7891079011515
+007
+1 UN    x
+R$ 9,49
+9,49
+MASSA INST NISSIN GAL CAIPIRA PIC 85G
+
+GTIN: 7891079014028
+008
+1 UN    x
+R$ 2,89
+2,89
+MASSA INST NISSIN GAL CAIPIRA PIC 85G
+
+GTIN: 7891079014028
+009
+1 UN    x
+R$ 2,89
+2,89
+MASSA INST NISSIN GAL CAIPIRA PIC 85G
+
+GTIN: 7891079014028
+010
+1 UN    x
+R$ 2,89
+2,89
+AMENDOIM ELMA CHIPS OVINHO 145G
+
+GTIN: 7892840821470
+011
+1 UN    x
+R$ 8,99
+8,99
+AMENDOIM ELMA CHIPS OVINHO 145G
+
+GTIN: 7892840821470
+012
+1 UN    x
+R$ 8,99
+8,99
+MASSA INST NISSIN GAL CAIPIRA PIC 85G
+
+GTIN: 7891079014028
+013
+1 UN    x
+R$ 2,89
+2,89
+CHOCOLATE LACTA AO LEITE OREO 90G
+
+GTIN: 7622210567567
+014
+1 UN    x
+R$ 7,99
+7,99
+CHOCOLATE LACTA AO LEITE OREO 90G
+
+GTIN: 7622210567567
+015
+1 UN    x
+R$ 7,99
+7,99
+AMENDOIM YOKI CROC MOLHO PIMENTA 420G
+
+GTIN: 7891095911851
+016
+1 UN    x
+R$ 16,98
+16,98
+HOT POCKET SADIA X PICANHA 145G
+
+GTIN: 7893000043213
+017
+1 UN    x
+R$ 8,99
+8,99
+AMENDOIM ELMA CHIPS OVINHO 145G
+
+GTIN: 7892840821470
+018
+1 UN    x
+R$ 8,99
+8,99
+PIPOCA YOKI PREMIUM 400G
+
+GTIN: 7891095911349
+019
+1 UN    x
+R$ 7,29
+7,29
+FGO EMP PERDIGAO BIG CHICKEN TRAD 1KG
+
+GTIN: 7891515786298
+020
+1 UN    x
+R$ 39,99
+39,99
+QUEIJO PRATO PRESIDENT FAT 300G
+
+GTIN: 7891097103858
+021
+1 UN    x
+R$ 18,49
+18,49
+HORTI TOMATE CEREJA VERMELHO BJ 250G
+
+GTIN: 751320848888
+022
+1 UN    x
+R$ 7,99
+7,99
+HORTI BROCOLIS EMB UN
+023
+1 UN    x
+R$ 5,99
+5,99
+PAPEL HIG MILI DUAL FD 60MT C 6UN
+
+GTIN: 7896104993712
+024
+1 UN    x
+R$ 18,69
+18,69
+OVOS VERMELHOS CAIPIRA BJ C20
+
+GTIN: 7898961290300
+025
+1 UN    x
+R$ 21,90
+21,90
+BEBIDA LACTEA TIROL COCO SC 900G
+
+GTIN: 7896256601251
+026
+1 UN    x
+R$ 5,49
+5,49
+PAO FRANCES CACETINHO KG
+027
+0.66 KG    x
+R$ 15,98
+10,55
+SALGADOS FESTA NICOLINI KG
+028
+0.142 KG    x
+R$ 59,90
+8,51
+CHOCOLATE ARCOR BLOCK RECH PACOCA 165G
+
+GTIN: 7898142867376
+029
+1 UN    x
+R$ 19,89
+19,89
+MOLHO TOMATE POMAROLA BOLONH SHT 300G
+
+GTIN: 7896036095126
+030
+1 UN    x
+R$ 6,49
+6,49
+SUCO INTEGRAL ALIANCA UVA 200ML
+
+GTIN: 7896100503335
+031
+1 UN    x
+R$ 4,29
+4,29
+ENERGETICO BALY ENERGY DRINK 2L
+
+GTIN: 7898080662668
+032
+1 UN    x
+R$ 10,90
+10,90
+Total de itens
+32
+Valor total
+R$ 324,37
+Desconto
+R$ 0,00
+Acréscimos
+R$ 0,00
+Valor a pagar
+R$ 324,37
+Troco
+R$ 0,00
+Forma de pagamento
+Informações adicionais
+Informações complementares
+Sua chave de acesso
+4326 1089 8356 7200 3570 6510 8000 0907 7710 0101 6297
+Você pode consultar o seu Cupom Fiscal pelo portal da Secretaria da Fazenda, usando a chave de acesso.`;
+const cr2 = parseCupomText(real)!;
+eq(cr2.parsedLines, 32, "cupom real: 32 linhas lidas");
+eq(cr2.expectedItems, 32, "cupom real: 'Total de itens 32' bate -> sem aviso");
+eq(cr2.items.length, 24, "cupom real: 32 linhas viram 24 itens (repetidos somados, mesmo nao seguidos)");
+eq(cr2.total, 324.37, "cupom real: valor a pagar");
+eq(cr2.store, "OSMAR NICOLINI COMERCIO E DISTRIBUICAO S.A.", "cupom real: mercado vem do cabecalho");
+eq(cr2.key, "43261089835672003570651080000907771001016297", "cupom real: chave de acesso");
+const nissin = cr2.items.find((i) => i.name.includes("CAIPIRA"))!;
+eq([nissin.quantity, nissin.unit_price, nissin.barcode], [4, 2.89, "7891079014028"], "cupom real: massa 4x somada (008, 009, 010 e 013)");
+const elma = cr2.items.find((i) => i.name.includes("ELMA"))!; eq(elma.quantity, 3, "cupom real: amendoim 3x somado (011, 012 e 018)");
+eq(cr2.items.find((i) => i.name.includes("BROCOLIS"))!.barcode, null, "cupom real: item sem GTIN (brocolis) fica sem codigo");
+eq(cr2.items.find((i) => i.name.startsWith("PAO FRANCES"))!.quantity, 0.66, "cupom real: pao por peso");
+const soma = cr2.items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+eq(Math.abs(soma - 324.37) < 0.1, true, "cupom real: soma dos itens bate com o total (diferenca de centavos por arredondamento do peso)");
+
+import { unitCompatible, guessSector } from "../src/lib/nfce.ts";
+const catU: any = [
+  { id: "q", user_id: null, name: "Queijo prato fatiado", unit: "kg" }, { id: "s", user_id: null, name: "Salsicha", unit: "kg" },
+  { id: "p", user_id: null, name: "Pão francês", unit: "kg" }, { id: "l", user_id: null, name: "Leite integral 1L", unit: "l" },
+  { id: "e", user_id: null, name: "Energético", unit: "un" },
+];
+const mu = (n: string, u: string) => matchProduct(n, catU, new Map(), null, new Map(), u)?.product.name ?? null;
+eq(mu("QUEIJO PRATO PRESIDENT FAT 300G", "UN"), null, "unidade: pacote de 300g (UN) NAO liga a 'queijo por kg'");
+eq(mu("QUEIJO PRATO FATIADO KG", "KG"), "Queijo prato fatiado", "unidade: item por KG liga a produto por kg");
+eq(mu("SALSICHA EXCELSIOR DEF 18CM KG", "KG"), "Salsicha", "unidade: salsicha KG");
+eq(mu("PAO FRANCES CACETINHO KG", "KG"), "Pão francês", "unidade: pao por KG");
+eq(mu("LEITE INTEGRAL PIRACANJUBA 1L", "UN"), "Leite integral 1L", "unidade: caixa de leite (UN) liga a produto em litros");
+eq(mu("ENERGETICO BALY ENERGY DRINK 2L", "UN"), "Energético", "unidade: energetico UN");
+eq([unitCompatible("KG", "kg"), unitCompatible("KG", "un"), unitCompatible("UN", "kg"), unitCompatible("UN", "pct"), unitCompatible("LT", "l")], [true, false, false, true, true], "unidade: tabela de compatibilidade");
+const sec = (n: string) => guessSector(n);
+eq([sec("LINGUICA BORRUSSIA DEF MIGNON KG"), sec("RACAO WHISKAS CARNE SHT 85G"), sec("HORTI BROCOLIS EMB UN"), sec("MASSA INST NISSIN YAKISSOBA 500G"), sec("CHOCOLATE ARCOR BLOCK RECH PACOCA 165G")], ["acougue", "pet", "hortifruti", "mercearia", "doces"], "setor: sugestoes por primeira palavra (linguica, racao, horti, massa, chocolate)");
+eq([sec("MOLHO TOMATE POMAROLA BOLONH SHT 300G"), sec("SUCO INTEGRAL ALIANCA UVA 200ML"), sec("PAPEL HIG MILI DUAL FD 60MT C 6UN"), sec("OVOS VERMELHOS CAIPIRA BJ C20"), sec("PAO FRANCES CACETINHO KG"), sec("FGO EMP PERDIGAO BIG CHICKEN TRAD 1KG"), sec("HOT POCKET SADIA X PICANHA 145G")], ["mercearia", "bebidas", "higiene", "frios", "padaria", "acougue", "congelados"], "setor: a primeira palavra manda (molho de tomate nao e hortifruti)");
+eq(sec("COISA ESTRANHA XYZ"), "outros", "setor: desconhecido cai em 'outros'");

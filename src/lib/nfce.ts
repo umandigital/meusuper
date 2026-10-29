@@ -39,6 +39,7 @@ export function matchProduct(
   aliases: Map<string, string>,
   barcode: string | null = null,
   barcodes: Map<string, string> = new Map(),
+  receiptUnit: string | null = null,
 ): Match | null {
   // o codigo de barras (EAN) do XML e a ligacao mais segura
   const byBarcode = barcode ? barcodes.get(barcode) : undefined;
@@ -63,6 +64,8 @@ export function matchProduct(
   for (const p of products) {
     const pt = tokens(p.name);
     if (!pt.length) continue;
+    // o preco so e comparavel se a unidade for a mesma: item por KG so liga a produto por kg (nunca um pacote de 300g a "queijo por kg")
+    if (receiptUnit && !unitCompatible(receiptUnit, p.unit)) continue;
     // na nota a 1a palavra diz o que o produto e (molho, suco, chocolate): "MOLHO TOMATE..." nao e "Tomate"
     if (!(pt[0] === rt[0] || (rt[0].length >= 3 && !/\d/.test(rt[0]) && pt[0].startsWith(rt[0])))) continue;
     const psizes = pt.filter(isSize);
@@ -79,6 +82,43 @@ export function matchProduct(
     }
   }
   return best ? { product: best.p, how: "name" } : null;
+}
+
+/** Unidade da nota (UN, KG, L...) x unidade do produto (un, pct, kg, l). */
+export function unitCompatible(receiptUnit: string, productUnit: string): boolean {
+  const u = receiptUnit.toUpperCase();
+  if (u === "KG") return productUnit === "kg";
+  if (u === "L" || u === "LT" || u === "LTS") return productUnit === "l";
+  return productUnit === "un" || productUnit === "pct" || productUnit === "l";
+}
+
+/** Setor provavel de um produto novo, pelas primeiras palavras do nome na nota. */
+const SECTOR_WORDS: [string, string[]][] = [
+  ["hortifruti", ["horti", "banana", "maca", "laranja", "limao", "tomate", "cebola", "batata", "alface", "cenoura", "brocolis", "abobora", "pepino", "mamao", "melancia", "uva", "morango"]],
+  ["acougue", ["linguica", "salsicha", "carne", "bife", "frango", "fgo", "peito", "coxa", "costela", "picanha", "alcatra", "patinho", "acem", "bacon", "hamburguer", "peixe", "file", "porco", "suino", "bovino"]],
+  ["pet", ["racao", "areia", "petisco", "sache"]],
+  ["frios", ["queijo", "presunto", "mortadela", "iogurte", "manteiga", "margarina", "requeijao", "ovos", "ovo", "leite", "bebida lactea", "creme", "nata", "salame", "peru"]],
+  ["padaria", ["pao", "salgados", "bolo", "cuca", "torrada", "biscoito de polvilho", "croissant"]],
+  ["congelados", ["hot", "pizza", "lasanha", "nuggets", "sorvete", "picole", "empanado", "congelado", "polpa", "kibe", "pastel"]],
+  ["doces", ["chocolate", "bombom", "bala", "pirulito", "wafer", "alfajor", "doce", "goma", "marshmallow", "paçoca", "pacoca", "trufa"]],
+  ["bebidas", ["suco", "refrigerante", "refrig", "agua", "cerveja", "vinho", "energetico", "cha", "isotonico", "vodka", "whisky", "cachaca", "espumante", "gin", "kombucha"]],
+  ["limpeza", ["detergente", "sabao", "amaciante", "desinfetante", "alvejante", "agua sanitaria", "esponja", "multiuso", "limpa", "saco de lixo", "papel toalha", "lava"]],
+  ["higiene", ["shampoo", "condicionador", "sabonete", "desodorante", "creme dental", "pasta dental", "escova", "absorvente", "fralda", "papel hig", "hig", "protetor", "hidratante", "cotonete", "algodao"]],
+  ["mercearia", ["arroz", "feijao", "acucar", "cafe", "sal", "oleo", "azeite", "farinha", "macarrao", "massa", "molho", "extrato", "milho", "ervilha", "atum", "sardinha", "biscoito", "bolacha", "amendoim", "pipoca", "cereal", "aveia", "granola", "maionese", "ketchup", "tempero", "vinagre", "leite condensado", "dueto", "salgadinho", "batata palha", "castanha"]],
+  ["utilidades", ["pilha", "lampada", "fosforo", "vela", "isqueiro", "carvao", "copo", "prato", "talher", "papel aluminio", "filme"]],
+];
+
+export function guessSector(receiptName: string): string {
+  const t = ` ${normalizeText(receiptName)} `;
+  const first = tokens(receiptName)[0] ?? "";
+  const single = (w: string) => !w.includes(" ");
+  // 1) frases ("papel hig", "papel toalha") primeiro, como frase
+  for (const [sector, words] of SECTOR_WORDS) if (words.some((w) => !single(w) && t.includes(` ${w} `))) return sector;
+  // 2) a primeira palavra manda ("MOLHO TOMATE" e mercearia, nao hortifruti); aceita abreviacao ("hig", "refrig")
+  for (const [sector, words] of SECTOR_WORDS) if (words.some((w) => single(w) && (first === w || (first.length >= 3 && w.startsWith(first))))) return sector;
+  // 3) qualquer palavra-chave no nome
+  for (const [sector, words] of SECTOR_WORDS) if (words.some((w) => single(w) && t.includes(` ${w} `))) return sector;
+  return "outros";
 }
 
 /** Chave de acesso (44 digitos) que vem dentro do link do QR Code da NFC-e. */
