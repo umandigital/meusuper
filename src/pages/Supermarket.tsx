@@ -72,9 +72,10 @@ export default function Supermarket() {
       </section>
 
       <Link to="/lists" className="big-btn"><Icon name="plus" size={20} /> Nova compra (lista)</Link>
+      <Link to="/import" className="big-btn"><Icon name="receipt" size={20} /> Importar cupom</Link>
 
       <h2 className="sector">COMPRAS DO MÊS ({purchases.length})</h2>
-      {!purchases.length && <p className="muted">Nenhuma compra registrada. Finalize uma lista para ela aparecer aqui.</p>}
+      {!purchases.length && <p className="muted">Nenhuma compra registrada. Finalize uma lista ou importe um cupom para ela aparecer aqui.</p>}
       <ul className="plain">
         {purchases.map((p) => (
           <li key={p.id}>

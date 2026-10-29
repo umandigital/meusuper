@@ -2,6 +2,8 @@ import type { Price, Product } from "../types/db.ts";
 
 export const FRESH_DAYS = 60;
 const RECENT_SAMPLES = 8;
+/** Quantas compras (datas diferentes) entram na media e o peso de cada uma, da mais recente para a mais antiga. */
+const AVERAGE_WEIGHTS = [3, 2, 1];
 const REFERENCE_MARGIN = 0.15;
 
 export interface Estimate {
@@ -30,11 +32,30 @@ const daysBetween = (isoDate: string, today: Date) =>
   Math.floor((today.getTime() - new Date(isoDate + "T00:00:00").getTime()) / 86_400_000);
 
 /**
+ * Media das ultimas compras (ate 3 datas diferentes), com mais peso para a mais recente.
+ * Varias linhas no mesmo dia (3 racoes iguais) contam como uma compra so. `sorted` vem do mais novo para o mais antigo.
+ */
+function recentAverage(sorted: Price[]): number {
+  const perDay = new Map<string, number[]>();
+  for (const p of sorted) {
+    if (perDay.size === AVERAGE_WEIGHTS.length && !perDay.has(p.paid_at)) break;
+    perDay.set(p.paid_at, [...(perDay.get(p.paid_at) ?? []), p.price]);
+  }
+  let sum = 0;
+  let weights = 0;
+  [...perDay.values()].forEach((day, i) => {
+    sum += (day.reduce((a, b) => a + b, 0) / day.length) * AVERAGE_WEIGHTS[i];
+    weights += AVERAGE_WEIGHTS[i];
+  });
+  return Math.round((sum / weights) * 100) / 100;
+}
+
+/**
  * Preco unitario esperado de um produto (com marca e mercado opcionais).
  * Procura o historico nesta ordem, usando o primeiro grupo que tiver precos:
  *   1) mesma marca no mesmo mercado   2) mesma marca em qualquer mercado
  *   3) qualquer marca no mesmo mercado  4) qualquer marca em qualquer mercado
- * Com marca definida, vale o ultimo preco; sem marca, a mediana do ultimo preco de cada marca.
+ * Com marca definida, vale a media das ultimas compras (a mais recente pesa mais); sem marca, a mediana dessa media de cada marca.
  * Sem historico, usa o preco de referencia do catalogo (+-15%). A faixa vem das ultimas compras.
  */
 export function estimateUnitPrice(
@@ -59,14 +80,11 @@ export function estimateUnitPrice(
     const sorted = [...chosen.pool].sort((a, b) => b.paid_at.localeCompare(a.paid_at));
     let unit: number;
     if (chosen.byBrand) {
-      unit = sorted[0].price;
+      unit = recentAverage(sorted);
     } else {
-      const latestPerBrand = new Map<string, number>();
-      for (const p of sorted) {
-        const key = p.brand_id ?? "none";
-        if (!latestPerBrand.has(key)) latestPerBrand.set(key, p.price);
-      }
-      unit = median([...latestPerBrand.values()]);
+      const perBrand = new Map<string, Price[]>();
+      for (const p of sorted) perBrand.set(p.brand_id ?? "none", [...(perBrand.get(p.brand_id ?? "none") ?? []), p]);
+      unit = median([...perBrand.values()].map(recentAverage));
     }
     const samples = sorted.slice(0, RECENT_SAMPLES).map((p) => p.price);
     return {

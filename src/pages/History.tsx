@@ -14,7 +14,7 @@ export default function History() {
       <h1>Histórico</h1>
       <Link to="/import" className="link"><Icon name="receipt" size={20} />Importar nota fiscal</Link>
       {isLoading && <p className="muted">Carregando…</p>}
-      {!isLoading && !purchases.length && <p className="muted">Nenhuma compra ainda. Finalize uma lista para ela aparecer aqui.</p>}
+      {!isLoading && !purchases.length && <p className="muted">Nenhuma compra ainda. Finalize uma lista ou importe um cupom para ela aparecer aqui.</p>}
       <ul className="cards">
         {purchases.map((p) => <PurchaseCard key={p.id} p={p} />)}
       </ul>

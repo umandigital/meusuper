@@ -192,7 +192,7 @@ export default function ListDetail() {
 
   function confirmFinish() {
     const left = items.length - inCart.length;
-    const msg = `Finalizar a compra de ${formatBRL(cartTotal)} (${inCart.length} itens)?${left ? `\n${left} item(ns) não marcado(s) ficam de fora.` : ""}`;
+    const msg = `Finalizar a compra de ${formatBRL(cartTotal)} (${inCart.length} itens)?${left ? `\n${left} item(ns) não marcado(s) ficam de fora.` : ""}\nSe depois importar o cupom, ele substitui esta compra.`;
     if (confirm(msg)) finish.mutate();
   }
 

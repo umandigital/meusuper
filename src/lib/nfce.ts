@@ -58,7 +58,7 @@ export function matchProduct(
   const rset = new Set(rt);
   // abreviacao de nota: "int" cobre "integral", "refrig" cobre "refrigerante" (so palavras, nao tamanhos como 5kg)
   // tamanhos (5kg, 200ml, 1.5l): se os dois lados tem tamanho e nenhum coincide, e outro produto
-  const isSize = (t: string) => /^\d+(\.\d+)?(kg|g|ml|l)$/.test(t);
+  const isSize = isSizeToken;
   const rsizes = rt.filter(isSize);
   const covers = (t: string) => rset.has(t) || (!/\d/.test(t) && rt.some((r) => r.length >= 3 && r !== t && !/\d/.test(r) && t.startsWith(r)));
   let best: { p: Product; common: number; size: number; own: boolean } | null = null;
@@ -96,6 +96,28 @@ function truncatedAlias(norm: string, aliases: Map<string, string>): string | un
   if (hits.size === 0) for (const [key, productId] of aliases) if (key.length > norm.length && key.startsWith(norm)) hits.add(productId);
   return hits.size === 1 ? [...hits][0] : undefined;
 }
+
+const ABBREVIATIONS: Record<string, string> = { fgo: "Frango", emp: "Empanado", hig: "Higiênico", refrig: "Refrigerante", int: "Integral" };
+
+/**
+ * Nome legivel de um produto novo, a partir do texto da nota ("FGO EMP PERDIGAO BIG CHICKEN TRAD 1KG" ->
+ * "Frango Empanado Perdigao Big Chicken Trad 1kg"). Tira o "HORTI" do comeco e o "KG" final de item pesado.
+ */
+export function cleanProductName(receiptName: string, receiptUnit: string | null = null): string {
+  const words = receiptName.trim().split(/\s+/).filter(Boolean);
+  if (words.length > 1 && /^horti$/i.test(words[0])) words.shift();
+  if (words.length > 1 && receiptUnit?.toUpperCase() === "KG" && /^kg$/i.test(words[words.length - 1])) words.pop();
+  return words
+    .map((w) => {
+      const lower = w.toLowerCase();
+      if (/^\d+([.,]\d+)?(kg|g|ml|l)$/.test(lower)) return lower;
+      return ABBREVIATIONS[lower] ?? lower.replace(/(^|[-/])\S/g, (m) => m.toUpperCase());
+    })
+    .join(" ");
+}
+
+/** Tamanho no nome ("5kg", "200ml", "1.5l"). */
+export const isSizeToken = (t: string) => /^\d+(\.\d+)?(kg|g|ml|l)$/.test(t);
 
 /** Unidade da nota (UN, KG, L...) x unidade do produto (un, pct, kg, l). */
 export function unitCompatible(receiptUnit: string, productUnit: string, unitWeightG: number | null = null): boolean {

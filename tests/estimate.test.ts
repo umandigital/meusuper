@@ -6,13 +6,13 @@ const eq = (a: any, b: any, m: string) => { if (JSON.stringify(a) !== JSON.strin
 eq(estimateUnitPrice(prod, null, [], today).source, "reference", "sem historico usa referencia");
 const r = estimateUnitPrice(prod, null, [], today); eq([+r.low.toFixed(2), +r.high.toFixed(2)], [23.71, 32.08], "faixa +-15%");
 const ps = [mk("A", 30, "2026-10-20"), mk("A", 26, "2026-09-01"), mk("B", 24, "2026-10-10")];
-eq(estimateUnitPrice(prod, "A", ps, today).unit, 30, "marca A = ultimo preco");
-eq(estimateUnitPrice(prod, null, ps, today).unit, 27, "sem marca = mediana dos ultimos por marca (30,24)");
+eq(estimateUnitPrice(prod, "A", ps, today).unit, 28.4, "marca A = media ponderada (30 pesa 3, 26 pesa 2)");
+eq(estimateUnitPrice(prod, null, ps, today).unit, 26.2, "sem marca = mediana da media de cada marca (28,4 e 24)");
 const e = estimateUnitPrice(prod, "A", ps, today); eq([e.low, e.high, e.fresh], [26, 30, true], "faixa e fresco");
 eq(estimateUnitPrice(prod, "A", [mk("A", 20, "2026-06-01")], today).fresh, false, "preco antigo");
-eq(estimateUnitPrice(prod, "Z", ps, today).unit, 27, "marca sem historico cai para o produto");
+eq(estimateUnitPrice(prod, "Z", ps, today).unit, 26.2, "marca sem historico cai para o produto");
 const s = summarize([{ product: prod, brandId: "A", quantity: 2 }, { product: { ...prod, id: "x", reference_price: null }, brandId: null, quantity: 1 }], ps, today);
-eq([s.total, s.fresh, s.withoutPrice, s.items], [60, 1, 1, 2], "totais");
+eq([s.total, s.fresh, s.withoutPrice, s.items], [56.8, 1, 1, 2], "totais");
 
 import { autoListName } from "../src/lib/stores.ts";
 eq(autoListName(new Date("2026-10-28T23:45:00Z")), "28/10/2026 20:45", "nome automatico da lista (horario de Brasilia)");
@@ -45,13 +45,21 @@ const px = (brand: string | null, price: number, d: string, store: string | null
 const hist = [px("A", 30, "2026-10-20", "Nicolini"), px("A", 26, "2026-10-22", "Peruzzo"), px("B", 24, "2026-10-21", "Peruzzo")];
 eq(estimateUnitPrice(prod, "A", hist, today, "Nicolini").unit, 30, "mercado: marca A no Nicolini = 30");
 eq(estimateUnitPrice(prod, "A", hist, today, "Peruzzo").unit, 26, "mercado: marca A no Peruzzo = 26");
-eq(estimateUnitPrice(prod, "A", hist, today, null).unit, 26, "mercado: sem mercado usa o preco mais recente da marca");
+eq(estimateUnitPrice(prod, "A", hist, today, null).unit, 27.6, "mercado: sem mercado usa a media da marca (26 pesa 3, 30 pesa 2)");
 eq(estimateUnitPrice(prod, "B", hist, today, "Nicolini").unit, 24, "mercado: marca B so existe no Peruzzo -> usa a marca em outro mercado");
 eq(estimateUnitPrice(prod, null, hist, today, "Nicolini").unit, 30, "mercado: sem marca no Nicolini = so o que existe la");
 eq(estimateUnitPrice(prod, null, hist, today, "Peruzzo").unit, 25, "mercado: sem marca no Peruzzo = mediana de 26 e 24");
-eq(estimateUnitPrice(prod, null, hist, today, "Outro").unit, 25, "mercado: mercado sem historico cai para o geral (mediana do ultimo preco de cada marca)");
+eq(estimateUnitPrice(prod, null, hist, today, "Outro").unit, 25.8, "mercado: mercado sem historico cai para o geral (mediana da media de cada marca)");
 const mini = (store: string | null) => summarize([{ product: prod, brandId: "A", quantity: 2 }], hist, today, store).total;
 eq([mini("Nicolini"), mini("Peruzzo")], [60, 52], "mercado: total da lista muda conforme o mercado");
+
+// --- media das ultimas compras
+const one = (price: number, d: string) => mk("A", price, d);
+eq(estimateUnitPrice(prod, "A", [one(10, "2026-10-20"), one(20, "2026-10-10"), one(30, "2026-10-01")], today).unit, 16.67, "media: 3 compras pesam 3, 2 e 1");
+eq(estimateUnitPrice(prod, "A", [one(10, "2026-10-20"), one(20, "2026-10-10"), one(30, "2026-10-01"), one(100, "2026-01-01")], today).unit, 16.67, "media: so as 3 ultimas entram (a de janeiro e ignorada)");
+eq(estimateUnitPrice(prod, "A", [one(3.49, "2026-10-28"), one(3.49, "2026-10-28"), one(3.49, "2026-10-28"), one(4.49, "2026-10-01")], today).unit, 3.89, "media: varias linhas do mesmo dia contam como uma compra");
+eq(estimateUnitPrice(prod, "A", [one(12, "2026-10-20")], today).unit, 12, "media: uma compra so = o proprio preco");
+const avg = estimateUnitPrice(prod, "A", [one(10, "2026-10-20"), one(20, "2026-10-10"), one(30, "2026-10-01")], today); eq([avg.low, avg.high, avg.date], [10, 30, "2026-10-20"], "media: faixa mostra o menor e o maior pago");
 
 import { brandOptions } from "../src/lib/brands.ts";
 const bs: any = [{ id: "A", name: "Tio Joao" }, { id: "B", name: "Camil" }, { id: "C", name: "Prato Fino" }];
@@ -559,3 +567,45 @@ eq([unitCompatible("KG", "un", 50), unitCompatible("KG", "un", null), unitCompat
 const catPao: any = [{ id: "p", user_id: null, name: "Pão francês", unit: "un", unit_weight_g: 50 }, { id: "q", user_id: null, name: "Queijo prato fatiado", unit: "kg", unit_weight_g: null }];
 eq(matchProduct("PAO FRANCES CACETINHO KG", catPao, new Map(), null, new Map(), "KG")?.product.name, "Pão francês", "nota em KG liga ao pao francês (agora por unidade)");
 eq(matchProduct("PAO FRANCES 6 UNIDADES", catPao, new Map(), null, new Map(), "UN")?.product.name, "Pão francês", "nota em UN tambem liga ao pao francês");
+
+// --- nome legivel de produto novo e completar compra importada do PDF
+import { cleanProductName } from "../src/lib/nfce.ts";
+import { planEnrich } from "../src/lib/enrich.ts";
+eq(cleanProductName("FGO EMP PERDIGAO BIG CHICKEN TRAD 1KG", "UN"), "Frango Empanado Perdigao Big Chicken Trad 1kg", "nome: abreviacoes e tamanho em minusculas");
+eq(cleanProductName("HORTI TOMATE CEREJA VERMELHO BJ 250G", "UN"), "Tomate Cereja Vermelho Bj 250g", "nome: tira o HORTI do comeco");
+eq(cleanProductName("SALGADOS FESTA NICOLINI KG", "KG"), "Salgados Festa Nicolini", "nome: tira o KG final de item pesado");
+eq(cleanProductName("PAPEL HIG MILI DUAL FD 60MT C 6UN", "UN"), "Papel Higiênico Mili Dual Fd 60mt C 6un", "nome: HIG vira Higiênico");
+
+const P = (id: string, name: string, unit: string, user: boolean, w: number | null = null): any => ({ id, name, unit, user_id: user ? "u" : null, sector: "mercearia", unit_weight_g: w, reference_price: null });
+const prods = [P("c1", "Suco integral 1L", "un", false), P("c2", "Pão francês", "un", false, 50), P("c3", "Molho de tomate 340g", "un", false), P("c4", "Molho de tomate sachê 300g", "un", false), P("u1", "Massa Inst Niss", "un", true), P("u2", "Pao Frances Cac", "kg", true), P("u3", "Linguica Borrus", "kg", true)];
+const als = new Map([["suco integral a", "c1"], ["molho tomate po", "c3"], ["massa inst niss", "u1"], ["pao frances cac", "u2"], ["linguica borrus", "u3"]]);
+const pis = [
+  { id: "i1", product_id: "c1", quantity: 1, unit_price: 4.29 },
+  { id: "i2", product_id: "c3", quantity: 1, unit_price: 6.49 },
+  { id: "i3", product_id: "u1", quantity: 1, unit_price: 9.49 },
+  { id: "i4", product_id: "u1", quantity: 4, unit_price: 2.89 },
+  { id: "i5", product_id: "u2", quantity: 0.66, unit_price: 15.98 },
+  { id: "i6", product_id: "u3", quantity: 0.246, unit_price: 59.9 },
+];
+const full: any = [
+  { name: "SUCO INTEGRAL ALIANCA UVA 200ML", quantity: 1, unit: "UN", unit_price: 4.29, barcode: "7896100503335" },
+  { name: "MOLHO TOMATE POMAROLA BOLONH SHT 300G", quantity: 1, unit: "UN", unit_price: 6.49, barcode: "7896036095126" },
+  { name: "MASSA INST NISSIN YAKISSOBA 500G", quantity: 1, unit: "UN", unit_price: 9.49, barcode: "7891079011515" },
+  { name: "MASSA INST NISSIN GAL CAIPIRA PIC 85G", quantity: 4, unit: "UN", unit_price: 2.89, barcode: "7891079014028" },
+  { name: "PAO FRANCES CACETINHO KG", quantity: 0.66, unit: "KG", unit_price: 15.98, barcode: null },
+  { name: "LINGUICA BORRUSSIA DEF MIGNON KG", quantity: 0.246, unit: "KG", unit_price: 59.9, barcode: null },
+];
+const plan = planEnrich(full, pis, prods, als, new Map());
+const kinds = plan.steps.map((st: any) => [st.itemId, st.target.kind, st.target.kind === "existing" ? st.target.product.id : st.target.name ?? null]);
+eq(kinds, [["i1", "new", "Suco Integral Alianca Uva 200ml"], ["i2", "existing", "c4"], ["i3", "rename", "Massa Inst Nissin Yakissoba 500g"], ["i4", "new", "Massa Inst Nissin Gal Caipira Pic 85g"], ["i5", "existing", "c2"], ["i6", "rename", "Linguica Borrussia Def Mignon"]], "completar: tamanho diferente vira produto novo, catalogo melhor troca, nome cortado e renomeado, duas massas se separam");
+const bread = plan.steps.find((st: any) => st.itemId === "i5");
+eq([bread.quantity, bread.unit_price], [13, 0.81], "completar: pao em KG vira 13 unidades a R$ 0,81");
+eq(plan.aliasFixes.find((f: any) => f.alias === "massa inst niss")?.to, null, "completar: apelido cortado que serve a dois produtos e removido");
+eq(plan.unmatched, [], "completar: todos os itens acharam par na compra");
+const again = planEnrich(full.slice(2, 4), [pis[2], { ...pis[3], product_id: "u9" }], [...prods.filter((p: any) => p.id !== "u1"), P("u1", "Massa Inst Nissin Yakissoba 500g", "un", true), P("u9", "Massa Inst Nissin Gal Caipira Pic 85g", "un", true)], new Map(), new Map([["7891079011515", "u1"], ["7891079014028", "u9"]]));
+eq(again.steps.some((st: any) => st.changed), false, "completar: rodar de novo depois de completo nao muda nada");
+const kgItem: any = [{ name: "LINGUICA BORRUSSIA DEF MIGNON KG", quantity: 0.246, unit: "KG", unit_price: 59.9, barcode: null }];
+const kgProds = [P("k1", "Linguica Borrussia Def Mignon", "kg", true)];
+eq(planEnrich(kgItem, [{ id: "k", product_id: "k1", quantity: 0.246, unit_price: 59.9 }], kgProds, new Map([["linguica borrus", "k1"]]), new Map()).steps.some((st: any) => st.changed), false, "completar: item pesado cujo nome ja esta certo (sem o KG final) nao muda");
+const pdfItem: any = [{ name: "LINGUICA BORRUS", quantity: 0.246, unit: "KG", unit_price: 59.9, barcode: null }];
+eq(planEnrich(pdfItem, [{ id: "k", product_id: "k1", quantity: 0.246, unit_price: 59.9 }], kgProds, new Map([["linguica borrus", "k1"]]), new Map()).steps.some((st: any) => st.changed), false, "completar: nunca troca um nome completo pelo cortado do PDF");

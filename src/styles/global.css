@@ -233,3 +233,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .cards .icon.big { background: hsl(var(--primary-btn)); color: #fff; }
 
 textarea { padding: 12px 14px; border-radius: 12px; border: 1px solid hsl(var(--border-strong)); background: hsl(var(--card)); width: 100%; font: inherit; color: inherit; resize: vertical; }
+
+/* importar cupom: botao de arquivo grande e "outras formas" recolhidas */
+.file-pick input::file-selector-button { margin-right: 12px; padding: 12px 16px; border: 0; border-radius: 12px; background: hsl(var(--primary-btn)); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.file-pick input { font-size: 14px; }
+.other-ways { margin-top: 12px; display: grid; gap: 12px; }
+.other-ways > summary { cursor: pointer; font-weight: 600; padding: 8px 0; min-height: 44px; display: flex; align-items: center; }
+.other-ways[open] > summary { margin-bottom: 4px; }
+.pick.review { display: grid; gap: 8px; }
