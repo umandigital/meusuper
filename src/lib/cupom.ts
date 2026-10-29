@@ -99,7 +99,8 @@ export function parseCupomText(text: string): (CupomReceipt & { parsedLines: num
   if (!raw.length) raw = parseMarketApp(t);
   if (!raw.length) return null;
   const flat = t.replace(/\s+/g, " ");
-  const date = flat.match(/Emiss[ãa]o:?\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  // "Emissão: 28/10/2026 17:43:19" (tela da SEFAZ) ou "Emissão 28/10/2026 às 17:43:19" (DANFE e seções do app)
+  const date = flat.match(/Emiss[ãa]o\D{0,15}(\d{2})\/(\d{2})\/(\d{4})/i) ?? flat.match(/Data\s+de\s+autoriza[çc][ãa]o\D{0,15}(\d{2})\/(\d{2})\/(\d{4})/i);
   const totalRaw = flat.match(/Valor\s+a\s+pagar\s+R\$:?\s*([\d.,]+)/i)?.[1];
   const expected = flat.match(/(?:Qtd\.?\s*)?total\s*de\s*itens:?\s*(\d+)/i)?.[1];
   // app do mercado: o nome da loja vem logo acima de "Detalhes do estabelecimento"

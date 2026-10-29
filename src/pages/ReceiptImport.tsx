@@ -154,6 +154,7 @@ export default function ReceiptImport() {
           </label>
           <label className="field">
             <span>Ou cole o texto do cupom (tela da SEFAZ ou do app do mercado)</span>
+            <small className="muted">Dica: abra todas as seções do cupom (Detalhes, Informações adicionais) antes de copiar, para a data vir junto.</small>
             <textarea rows={4} placeholder="Selecione todo o texto do cupom, copie e cole aqui" value={pasted} onChange={(e) => setPasted(e.target.value)} />
           </label>
           <button type="button" className="primary" disabled={!pasted.trim() || !dataReady} onClick={loadText}>Ler o texto colado</button>

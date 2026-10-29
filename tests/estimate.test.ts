@@ -519,3 +519,10 @@ const sec = (n: string) => guessSector(n);
 eq([sec("LINGUICA BORRUSSIA DEF MIGNON KG"), sec("RACAO WHISKAS CARNE SHT 85G"), sec("HORTI BROCOLIS EMB UN"), sec("MASSA INST NISSIN YAKISSOBA 500G"), sec("CHOCOLATE ARCOR BLOCK RECH PACOCA 165G")], ["acougue", "pet", "hortifruti", "mercearia", "doces"], "setor: sugestoes por primeira palavra (linguica, racao, horti, massa, chocolate)");
 eq([sec("MOLHO TOMATE POMAROLA BOLONH SHT 300G"), sec("SUCO INTEGRAL ALIANCA UVA 200ML"), sec("PAPEL HIG MILI DUAL FD 60MT C 6UN"), sec("OVOS VERMELHOS CAIPIRA BJ C20"), sec("PAO FRANCES CACETINHO KG"), sec("FGO EMP PERDIGAO BIG CHICKEN TRAD 1KG"), sec("HOT POCKET SADIA X PICANHA 145G")], ["mercearia", "bebidas", "higiene", "frios", "padaria", "acougue", "congelados"], "setor: a primeira palavra manda (molho de tomate nao e hortifruti)");
 eq(sec("COISA ESTRANHA XYZ"), "outros", "setor: desconhecido cai em 'outros'");
+
+// data em outros formatos de cupom (DANFE do e-mail e seccoes abertas do app)
+const comData = (extra: string) => parseCupomText(`PAO KG\n001\n0.5 KG    x\nR$ 10,00\n5,00\n${extra}`)?.date;
+eq(comData("Dados da NFC-e\nN° 90777 - Série 108\nEmissão\n28/10/2026 às 17:43:19\nProtocolo de autorização\n243262073873948"), "2026-10-28", "data: formato do DANFE do e-mail (Emissão, linha, data 'às' hora)");
+eq(comData("Número: 90777 Série: 108 Emissão: 27/10/2026 17:43:19 - Via Consumidor 2"), "2026-10-27", "data: formato da tela da SEFAZ");
+eq(comData("Data de autorização\n26/10/2026 às 17:43:20"), "2026-10-26", "data: so a autorizacao (mesmo dia da emissao)");
+eq(comData("Valor a pagar\nR$ 5,00"), null, "data: ausente continua nula (a tela avisa)");
