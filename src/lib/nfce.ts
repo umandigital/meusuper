@@ -63,6 +63,8 @@ export function matchProduct(
   for (const p of products) {
     const pt = tokens(p.name);
     if (!pt.length) continue;
+    // na nota a 1a palavra diz o que o produto e (molho, suco, chocolate): "MOLHO TOMATE..." nao e "Tomate"
+    if (!(pt[0] === rt[0] || (rt[0].length >= 3 && !/\d/.test(rt[0]) && pt[0].startsWith(rt[0])))) continue;
     const psizes = pt.filter(isSize);
     if (psizes.length && rsizes.length && !psizes.some((z) => rsizes.includes(z))) continue;
     const common = pt.filter(covers).length;

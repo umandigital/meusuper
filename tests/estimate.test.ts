@@ -95,6 +95,10 @@ eq(m("FEIJAO PRETO CAMIL 1KG"), "Feijão preto 1kg", "nota: acento e maiuscula n
 eq(m("ACUCAR REFINADO UNIAO 1KG"), "Açúcar refinado 1kg", "nota: acucar sem acento");
 eq(m("SHAMPOO XYZ 350ML"), null, "nota: produto desconhecido nao casa");
 eq(m("SUCO INTEGRAL ALIANCA UVA 200ML"), null, "nota: mesmo nome mas tamanho diferente (200ml x 1L) NAO casa");
+const frutas: any = [...cat, { id: "11", user_id: null, name: "Uva" }, { id: "12", user_id: null, name: "Tomate" }, { id: "13", user_id: null, name: "Paçoca" }];
+const mf = (n: string) => matchProduct(n, frutas, new Map())?.product.name ?? null;
+eq([mf("MOLHO TOMATE POMAROLA BOLONH SHT 300G"), mf("SUCO INTEGRAL ALIANCA UVA 200ML"), mf("CHOCOLATE ARCOR BLOCK RECH PACOCA 165G")], [null, null, null], "nota: produtos de uma palavra nao casam no meio do nome (molho de TOMATE, suco de UVA, chocolate com PACOCA)");
+eq([mf("TOMATE ITALIANO KG"), mf("UVA ITALIA KG"), mf("PACOCA ROLHA 20UN")], ["Tomate", "Uva", "Paçoca"], "nota: a palavra no inicio do nome continua casando");
 eq(m("ARROZ TIO JOAO 2KG"), null, "nota: arroz 2kg nao casa com 5kg nem 1kg");
 eq(m("LEITE INTEGRAL 1 LITRO PIRACANJUBA"), "Leite integral 1L", "nota: sem unidade colada no tamanho continua casando pelo nome quando o tamanho nao aparece");
 eq(m("XPTO 123 ESPECIAL", new Map([[aliasKey("XPTO 123 ESPECIAL"), "5"]])), "Feijão preto 1kg", "nota: alias lembrado tem prioridade (e funciona mesmo sem palavras em comum)");
