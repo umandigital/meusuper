@@ -7,7 +7,7 @@ import { accessKeyOf, aliasKey, matchProduct, receiptUrlOf, type Receipt } from 
 import { SECTORS } from "../lib/sectors";
 import { STORES } from "../lib/stores";
 import { formatBRL } from "../lib/format";
-import { fetchReceipt, getAliases, importReceipt, type ReceiptError } from "../services/receipt";
+import { fetchReceipt, getAliases, importReceipt, ReceiptFetchError, type ReceiptError } from "../services/receipt";
 import { listProducts } from "../services/products";
 import type { Product } from "../types/db";
 import Icon from "../components/Icon";
@@ -36,6 +36,8 @@ export default function ReceiptImport() {
   const [scanning, setScanning] = useState(false);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
+  const [debug, setDebug] = useState("");
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<(Receipt & { key: string | null }) | null>(null);
   const [overrides, setOverrides] = useState<Record<number, Choice>>({});
@@ -50,6 +52,8 @@ export default function ReceiptImport() {
     }
     setScanning(false);
     setError("");
+    setDebug("");
+    setCopied(false);
     setLoading(true);
     try {
       const r = await fetchReceipt(url);
@@ -59,7 +63,9 @@ export default function ReceiptImport() {
       setStore(s.includes("nicolini") ? "Nicolini" : s.includes("peruzzo") ? "Peruzzo" : "");
       setDate(r.date ?? new Date().toISOString().slice(0, 10));
     } catch (e) {
-      setError(MESSAGES[(e as Error).message as ReceiptError] ?? MESSAGES.network);
+      const kind = e instanceof ReceiptFetchError ? e.kind : "network";
+      setError(MESSAGES[kind]);
+      setDebug(e instanceof ReceiptFetchError && e.debug ? e.debug : "");
     } finally {
       setLoading(false);
     }
@@ -115,6 +121,11 @@ export default function ReceiptImport() {
           {!dataReady && <p className="muted small">Carregando seus produtos…</p>}
           {loading && <p className="muted">Buscando a nota…</p>}
           {error && <p className="error" role="alert">{error}</p>}
+          {debug && (
+            <button type="button" className="link" onClick={() => navigator.clipboard.writeText(debug).then(() => setCopied(true), () => setCopied(false))}>
+              {copied ? "Diagnóstico copiado. Cole na conversa." : "Copiar diagnóstico da página"}
+            </button>
+          )}
         </section>
       )}
 

@@ -102,7 +102,7 @@ eq(receiptUrlOf("https://evil.example.com/?u=sefaz.rs.gov.br"), null, "nota: dom
 eq(receiptUrlOf("https://sefaz.rs.gov.br.evil.com/x"), null, "nota: dominio disfarcado recusado");
 eq(receiptUrlOf("texto qualquer"), null, "nota: texto sem link");
 
-import { parseNfce, isAllowedUrl } from "../api/nfce.ts";
+import { parseNfce, isAllowedUrl, diagnosticText } from "../api/nfce.ts";
 // Trecho no layout padrao de consulta publica de NFC-e (modelado, nao capturado de uma nota real).
 const html = `<html><body>
 <div id="u20" class="txtTopo">SUPERMERCADO NICOLINI LTDA</div>
@@ -128,3 +128,26 @@ eq(rc.items[1], { name: "BANANA PRATA KG", quantity: 1.35, unit: "KG", unit_pric
 eq(rc.items[2].name + "|" + rc.items[2].unit_price, "LEITE INT PIRACANJUBA & CIA 1L|5.79", "leitor da nota: sem valor unitario usa total/qtd e decodifica &amp;");
 eq(parseNfce("<html>pagina qualquer</html>").items.length, 0, "leitor da nota: pagina diferente nao inventa itens");
 eq([isAllowedUrl("https://www.sefaz.rs.gov.br/NFCE/x")?.hostname, isAllowedUrl("http://www.sefaz.rs.gov.br/x"), isAllowedUrl("https://sefaz.rs.gov.br.evil.com/"), isAllowedUrl("https://127.0.0.1/")], ["www.sefaz.rs.gov.br", null, null, null], "funcao: so https e so dominios da SEFAZ");
+
+
+// Estrategia B: tabela com cabecalho (colunas achadas pelo texto, em qualquer ordem). Fixture MODELADA, nao capturada.
+const htmlB = `<html><body><h2>NFC-e</h2><div>Emitida em: Emissão 28/10/2026 20:41:03</div>
+<table class="table"><thead><tr><th>Código</th><th>Descrição</th><th>Qtde</th><th>UN</th><th>Vl. Unit.</th><th>Vl. Total</th></tr></thead><tbody>
+<tr><td>1</td><td>ARROZ TIO JOAO TP1 5KG</td><td>2,0000</td><td>UN</td><td>31,50</td><td>63,00</td></tr>
+<tr><td>2</td><td>BANANA PRATA KG</td><td>1,3500</td><td>KG</td><td>6,99</td><td>9,44</td></tr>
+<tr><td>3</td><td>LEITE &amp; CIA</td><td>6</td><td>UN</td><td></td><td>34,74</td></tr>
+</tbody></table><table><tr><th>Forma de pagamento</th><th>Valor</th></tr><tr><td>Dinheiro</td><td>107,18</td></tr></table></body></html>`;
+const rb = parseNfce(htmlB);
+eq(rb.items.length, 3, "leitor B (tabela): 3 itens e ignora a tabela de pagamento");
+eq(rb.items[0], { name: "ARROZ TIO JOAO TP1 5KG", quantity: 2, unit: "UN", unit_price: 31.5 }, "leitor B: item por unidade");
+eq(rb.items[1].unit + "|" + rb.items[1].unit_price, "KG|6.99", "leitor B: item por peso");
+eq(rb.items[2].name + "|" + rb.items[2].unit_price, "LEITE & CIA|5.79", "leitor B: sem unitario usa total/qtd");
+eq(rb.date, "2026-10-28", "leitor B: data");
+// colunas em outra ordem
+const htmlC = `<table><tr><th>Valor Total</th><th>Quantidade</th><th>Descrição do produto</th><th>Valor Unitário</th></tr><tr><td>12,00</td><td>3</td><td>FEIJAO PRETO 1KG</td><td>4,00</td></tr></table>`;
+eq(parseNfce(htmlC).items, [{ name: "FEIJAO PRETO 1KG", quantity: 3, unit: "UN", unit_price: 4 }], "leitor B: colunas em outra ordem");
+// pagina de erro real do portal (resposta a uma chave inventada)
+eq(parseNfce("<div>Falha inesperada no sistema. Motivo: Modelo (56) desconhecido Parameter name: chaveAcesso</div>").items.length, 0, "leitor: pagina de erro do portal nao inventa itens");
+const diag = diagnosticText("<html><head><script>var x=1</script></head><body><table><tr><td>CPF do consumidor</td><td>123.456.789-09</td></tr><tr><td>Item</td><td>ARROZ</td></tr></table></body></html>");
+eq(diag.includes("123.456.789-09") || diag.includes("var x"), false, "diagnostico: CPF mascarado e sem scripts");
+eq(diag.includes("***.***.***-**") && diag.includes("ARROZ"), true, "diagnostico: mantem o texto util");

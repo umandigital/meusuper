@@ -26,10 +26,13 @@ const decode = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** "1.234,56" -> 1234.56 */
-const num = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
+/** "1.234,56" -> 1234.56; texto vazio ou invalido vira NaN (nunca 0). */
+const num = (s: string) => (s.trim() === "" ? NaN : Number(s.replace(/\./g, "").replace(",", ".")));
 
-export function parseNfce(html: string): Receipt {
+const stripTags = (h: string) => decode(h.replace(/<br\s*\/?>/gi, " "));
+
+/** Estrategia A: layout legado de consulta publica (classes txtTit, Rqtd, RUN, RvlUnit). */
+function parseLegacy(html: string): Receipt["items"] {
   const items: Receipt["items"] = [];
   // cada item comeca em um txtTit; cada trecho e lido separadamente para um campo faltando nao desalinhar os demais
   const chunks = html.split(/(?=<span[^>]*class="txtTit)/).slice(1);
@@ -45,11 +48,61 @@ export function parseNfce(html: string): Receipt {
     if (!(quantity > 0) || !(price >= 0)) continue;
     items.push({ name, quantity, unit: unit.toUpperCase(), unit_price: price });
   }
+  return items;
+}
+
+/**
+ * Estrategia B: qualquer tabela cujo cabecalho tenha Descricao + Quantidade + valor (unitario e/ou total).
+ * As colunas sao achadas pelo texto do cabecalho, entao a ordem delas nao importa.
+ */
+function parseTables(html: string): Receipt["items"] {
+  const items: Receipt["items"] = [];
+  for (const table of html.match(/<table[\s\S]*?<\/table>/gi) ?? []) {
+    const rows = (table.match(/<tr[\s\S]*?<\/tr>/gi) ?? []).map((r) => (r.match(/<t[hd][\s\S]*?<\/t[hd]>/gi) ?? []).map(stripTags));
+    const headIdx = rows.findIndex((cells) => cells.some((c) => /descri/i.test(c)) && cells.some((c) => /qtd|quant/i.test(c)) && cells.some((c) => /unit|total|valor/i.test(c)));
+    if (headIdx < 0) continue;
+    const head = rows[headIdx];
+    const col = (re: RegExp) => head.findIndex((c) => re.test(c));
+    const iName = col(/descri/i);
+    const iQty = col(/qtd|quant/i);
+    const iUn = head.findIndex((c) => /^(un|unid)\.?(ade)?:?$/i.test(c.trim()));
+    const iUnit = col(/unit/i);
+    const iTotal = col(/total/i);
+    for (const cells of rows.slice(headIdx + 1)) {
+      if (cells.length < head.length - 1) continue;
+      const name = cells[iName];
+      const quantity = num(cells[iQty] ?? "");
+      const unitPrice = iUnit >= 0 ? num(cells[iUnit] ?? "") : NaN;
+      const total = iTotal >= 0 ? num(cells[iTotal] ?? "") : NaN;
+      const price = Number.isFinite(unitPrice) ? unitPrice : quantity > 0 ? total / quantity : NaN;
+      if (!name || !(quantity > 0) || !(price >= 0) || !Number.isFinite(price)) continue;
+      items.push({ name, quantity, unit: (iUn >= 0 ? cells[iUn] : "UN").toUpperCase().slice(0, 4) || "UN", unit_price: price });
+    }
+    if (items.length) break;
+  }
+  return items;
+}
+
+export function parseNfce(html: string): Receipt {
+  const items = parseLegacy(html);
+  if (!items.length) items.push(...parseTables(html));
   const store = decode(html.match(/class="txtTopo"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "") || null;
   const d = html.match(/Emiss[ãa]o[\s\S]{0,120}?(\d{2})\/(\d{2})\/(\d{4})/i) ?? html.match(/(\d{2})\/(\d{2})\/(\d{4})\s+\d{2}:\d{2}:\d{2}/);
   const date = d ? `${d[3]}-${d[2]}-${d[1]}` : null;
   const totalRaw = html.match(/Valor\s+total\s+R\$[\s\S]*?class="totalNumb[^"]*"[^>]*>\s*([\d.,]+)/i)?.[1];
   return { store, date, items, total: totalRaw ? num(totalRaw) : null };
+}
+
+/** Texto visivel da pagina (sem scripts), com CPF mascarado, para calibrar o leitor quando o layout for desconhecido. */
+export function diagnosticText(html: string): string {
+  const body = html
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi, "")
+    .replace(/<\/(tr|p|div|li|h\d|table)>/gi, "\n")
+    .replace(/<\/t[dh]>/gi, " | ")
+    .replace(/<[^>]+>/g, " ");
+  return decode(body.replace(/\n+/g, "\n"))
+    .replace(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)/g, "***.***.***-**")
+    .slice(0, 15000);
 }
 
 export function isAllowedUrl(raw: string): URL | null {
@@ -107,6 +160,6 @@ export default async function handler(req: any, res: any) {
     return res.status(502).json({ error: "fetch", detail: (e as Error).message });
   }
   const receipt = parseNfce(html);
-  if (!receipt.items.length) return res.status(422).json({ error: "layout" });
+  if (!receipt.items.length) return res.status(422).json({ error: "layout", debug: diagnosticText(html) });
   return res.status(200).json(receipt);
 }

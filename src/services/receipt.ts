@@ -3,6 +3,13 @@ import type { Receipt } from "../lib/nfce";
 
 export type ReceiptError = "layout" | "auth" | "url" | "network";
 
+/** Erro ao buscar a nota; em "layout" traz o texto da pagina para diagnostico. */
+export class ReceiptFetchError extends Error {
+  constructor(public kind: ReceiptError, public debug?: string) {
+    super(kind);
+  }
+}
+
 /** Pede ao servidor (api/nfce) que busque a nota na SEFAZ. */
 export async function fetchReceipt(url: string): Promise<Receipt> {
   const { data } = await supabase.auth.getSession();
@@ -15,11 +22,12 @@ export async function fetchReceipt(url: string): Promise<Receipt> {
       body: JSON.stringify({ url }),
     });
   } catch {
-    throw new Error("network" satisfies ReceiptError);
+    throw new ReceiptFetchError("network");
   }
   if (res.ok) return (await res.json()) as Receipt;
-  const kind = res.status === 422 ? "layout" : res.status === 401 ? "auth" : res.status === 400 ? "url" : "network";
-  throw new Error(kind satisfies ReceiptError);
+  const body = (await res.json().catch(() => ({}))) as { debug?: string };
+  const kind: ReceiptError = res.status === 422 ? "layout" : res.status === 401 ? "auth" : res.status === 400 ? "url" : "network";
+  throw new ReceiptFetchError(kind, body.debug);
 }
 
 export async function getAliases(): Promise<Map<string, string>> {
