@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -10,6 +10,8 @@ import { formatBRL } from "../lib/format";
 import { fetchReceipt, getAliases, getBarcodes, importReceipt, ReceiptFetchError, type ReceiptError } from "../services/receipt";
 import { parseNfeXml } from "../lib/nfe";
 import { parseCupomText } from "../lib/cupom";
+import { pdfFileToText } from "../lib/pdfText";
+import { takeSharedFile } from "../lib/shared";
 import { listProducts } from "../services/products";
 import type { Product } from "../types/db";
 import Icon from "../components/Icon";
@@ -44,6 +46,7 @@ export default function ReceiptImport() {
   const [copied, setCopied] = useState(false);
   const [pasted, setPasted] = useState("");
   const [dateGuess, setDateGuess] = useState(false);
+  const [fromPdf, setFromPdf] = useState(false);
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<(Receipt & { key: string | null }) | null>(null);
   const [overrides, setOverrides] = useState<Record<number, Choice>>({});
@@ -59,24 +62,50 @@ export default function ReceiptImport() {
     setDateGuess(!r.date);
   }
 
+  /** PDF do cupom, XML da nota ou texto: descobre pelo nome/tipo do arquivo. */
+  async function loadFile(file: File | undefined) {
+    if (!file) return;
+    setError("");
+    setDebug("");
+    setFromPdf(false);
+    const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
+    const isXml = /xml/i.test(file.type) || /\.xml$/i.test(file.name);
+    setLoading(true);
+    try {
+      if (isXml) {
+        const parsed = parseNfeXml(await file.text());
+        if (!parsed || !parsed.items.length) throw new Error("xml");
+        begin(parsed, parsed.key);
+      } else {
+        const text = isPdf ? await pdfFileToText(file) : await file.text();
+        const parsed = parseCupomText(text);
+        if (!parsed) throw new Error("texto");
+        setFromPdf(isPdf);
+        begin(parsed, parsed.key);
+      }
+    } catch {
+      setError(isPdf ? "Não consegui ler esse PDF como um cupom. Use o PDF do cupom fiscal (DANFE NFC-e)." : "Esse arquivo não parece ser um cupom ou o XML de uma nota fiscal com itens.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // chegou pelo "Compartilhar" do Android: o service worker guardou o arquivo e abriu /import?shared=1
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("shared") !== "1") return;
+    void takeSharedFile().then((f) => {
+      if (f) void loadFile(f);
+      else setError("Não chegou nenhum arquivo. Tente compartilhar o cupom de novo.");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function loadText() {
     setError("");
     setDebug("");
     const parsed = parseCupomText(pasted);
     if (!parsed) {
       setError("Não encontrei itens nesse texto. Copie a tela inteira do cupom e cole de novo.");
-      return;
-    }
-    begin(parsed, parsed.key);
-  }
-
-  async function loadXml(file: File | undefined) {
-    if (!file) return;
-    setError("");
-    setDebug("");
-    const parsed = parseNfeXml(await file.text());
-    if (!parsed || !parsed.items.length) {
-      setError("Esse arquivo não parece ser o XML de uma nota fiscal com itens.");
       return;
     }
     begin(parsed, parsed.key);
@@ -149,8 +178,8 @@ export default function ReceiptImport() {
           <p className="muted small">Leia o QR Code da nota fiscal (NFC-e) do mercado. Os itens e preços entram como uma compra.</p>
           <button type="button" className="primary" onClick={() => { setError(""); setScanning(true); }} disabled={loading || !dataReady}><Icon name="camera" size={20} /> Ler QR Code da nota</button>
           <label className="field">
-            <span>Arquivo XML da nota (anexo do e-mail do cupom)</span>
-            <input type="file" accept=".xml,text/xml,application/xml" disabled={!dataReady} onChange={(e) => void loadXml(e.target.files?.[0])} />
+            <span>Arquivo do cupom (PDF do e-mail ou do app) ou XML da nota</span>
+            <input type="file" accept=".pdf,application/pdf,.xml,text/xml,application/xml" disabled={!dataReady} onChange={(e) => void loadFile(e.target.files?.[0])} />
           </label>
           <label className="field">
             <span>Ou cole o texto do cupom (tela da SEFAZ ou do app do mercado)</span>
@@ -179,6 +208,9 @@ export default function ReceiptImport() {
             <p className="error" role="alert">
               A nota diz ter {receipt.expectedItems} itens, mas li {receipt.parsedLines ?? receipt.items.length}. Confira a lista antes de importar: pode ter ficado item de fora.
             </p>
+          )}
+          {fromPdf && (
+            <p className="muted small">O PDF traz os nomes cortados em 15 letras e sem código de barras. Confira os produtos novos e complete o nome, se quiser.</p>
           )}
           <section className="panel">
             <div className="muted small">{receipt.store ?? "Mercado não identificado"}</div>

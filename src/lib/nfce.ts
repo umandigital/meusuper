@@ -47,7 +47,8 @@ export function matchProduct(
     const p = products.find((x) => x.id === byBarcode);
     if (p) return { product: p, how: "barcode" };
   }
-  const byAlias = aliases.get(aliasKey(receiptName));
+  const norm = aliasKey(receiptName);
+  const byAlias = aliases.get(norm) ?? truncatedAlias(norm, aliases);
   if (byAlias) {
     const p = products.find((x) => x.id === byAlias);
     if (p) return { product: p, how: "alias" };
@@ -82,6 +83,18 @@ export function matchProduct(
     }
   }
   return best ? { product: best.p, how: "name" } : null;
+}
+
+/**
+ * O PDF do cupom corta os nomes em 15 letras ("LINGUICA BORRUS"). Se esse texto e o comeco de UM nome que voce
+ * ja ligou antes, vale a mesma ligacao; se o comeco serve para produtos diferentes, nao adivinha.
+ */
+function truncatedAlias(norm: string, aliases: Map<string, string>): string | undefined {
+  if (norm.length < 10 || norm.length > 15) return undefined;
+  const hits = new Set<string>();
+  for (const [key, productId] of aliases) if (key.length > norm.length && key.startsWith(norm + " ")) hits.add(productId);
+  if (hits.size === 0) for (const [key, productId] of aliases) if (key.length > norm.length && key.startsWith(norm)) hits.add(productId);
+  return hits.size === 1 ? [...hits][0] : undefined;
 }
 
 /** Unidade da nota (UN, KG, L...) x unidade do produto (un, pct, kg, l). */

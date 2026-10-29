@@ -106,7 +106,9 @@ export function parseCupomText(text: string): (CupomReceipt & { parsedLines: num
   // app do mercado: o nome da loja vem logo acima de "Detalhes do estabelecimento"
   const lines = t.split("\n").map((l) => l.trim()).filter(Boolean);
   const at = lines.findIndex((l) => /^Detalhes do estabelecimento/i.test(l));
-  const store = at > 0 ? lines[at - 1] : null;
+  // DANFE (PDF do e-mail): o nome da loja e a linha logo acima do CNPJ
+  const cnpj = lines.findIndex((l) => /^CNPJ[\s:]/i.test(l));
+  const store = at > 0 ? lines[at - 1] : cnpj > 0 ? lines[cnpj - 1] : null;
   const keyDigits = flat.match(/Chave\s+de\s+acesso:?\s*((?:\d[\s]*){44})/i)?.[1]?.replace(/\s+/g, "");
   return {
     store,

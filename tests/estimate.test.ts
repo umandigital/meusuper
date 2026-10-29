@@ -536,3 +536,15 @@ const ca2 = parseCupomText(aberto)!;
 eq(ca2.date, "2026-10-28", "cupom real aberto: data de emissao lida (28/10/2026)");
 eq(ca2.key, "43261089835672003570651080000907771001016297", "cupom real aberto: chave quebrada em duas linhas e sem espacos");
 eq([ca2.items.length, ca2.parsedLines, ca2.expectedItems, ca2.total], [24, 32, 32, 324.37], "cupom real aberto: itens, linhas, esperado e total continuam certos");
+
+// ---- nomes cortados do PDF (15 letras) reconhecidos pelo que voce ja ligou antes
+const al = new Map([["linguica borrussia def mignon kg", "5"], ["massa inst nissin yakissoba 500g", "7"], ["massa inst nissin gal caipira pic 85g", "9"], ["racao whiskas carne sht 85g", "3"]]);
+const cat2: any = [{ id: "5", user_id: null, name: "Linguiça mignon", unit: "kg" }, { id: "7", user_id: null, name: "Macarrão Nissin Yakissoba", unit: "un" }, { id: "9", user_id: null, name: "Macarrão Nissin Caipira", unit: "un" }, { id: "3", user_id: null, name: "Ração Whiskas Carne", unit: "un" }];
+const mt = (n: string, u = "UN") => matchProduct(n, cat2, al, null, new Map(), u)?.product.name ?? null;
+eq(mt("LINGUICA BORRUS", "KG"), "Linguiça mignon", "PDF cortado: 'LINGUICA BORRUS' = nome completo que voce ja ligou");
+eq(mt("RACAO WHISKAS C"), "Ração Whiskas Carne", "PDF cortado: 'RACAO WHISKAS C'");
+eq(mt("MASSA INST NISS"), null, "PDF cortado: comeco ambiguo (yakissoba x caipira) NAO adivinha");
+eq(mt("MASSA INST NISS", "UN") === null && matchProduct("MASSA INST NISS", cat2, new Map([["massa inst nissin yakissoba 500g", "7"], ["massa inst nissin gal caipira pic 85g", "7"]]), null, new Map(), "UN")?.product.name === "Macarrão Nissin Yakissoba", true, "PDF cortado: comeco ambiguo mas mesmo produto -> liga");
+eq(mt("COISA ESTRANHA XY"), null, "PDF cortado: sem historico nao liga");
+// DANFE: nome da loja acima do CNPJ
+eq(parseCupomText("OSMAR NICOLINI COMERCIO E DISTRIBUICAO S.A.\nCNPJ 89.835.672/0035-70\nPAO KG\n001 0.5 KG x R$ 10,00 5,00")?.store, "OSMAR NICOLINI COMERCIO E DISTRIBUICAO S.A.", "DANFE: loja pela linha acima do CNPJ");
