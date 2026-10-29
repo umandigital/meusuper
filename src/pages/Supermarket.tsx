@@ -6,12 +6,13 @@ import PeriodNav from "../components/PeriodNav";
 import { usePeriod } from "../lib/usePeriod";
 import { getMonthData, getPurchasesIn, getSupermarketBudget, saveSupermarketBudget } from "../services/month";
 import { formatBRL } from "../lib/format";
+import Icon, { type IconName } from "../components/Icon";
 
-const TILES = [
-  { to: "/lists", icon: "📋", title: "Listas" },
-  { to: "/products", icon: "📦", title: "Produtos" },
-  { to: "/history", icon: "🕘", title: "Histórico" },
-  { to: "/statistics", icon: "📊", title: "Estatísticas" },
+const TILES: { to: string; icon: IconName; title: string }[] = [
+  { to: "/lists", icon: "list", title: "Listas" },
+  { to: "/products", icon: "box", title: "Produtos" },
+  { to: "/history", icon: "clock", title: "Histórico" },
+  { to: "/statistics", icon: "chart", title: "Estatísticas" },
 ];
 
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
@@ -42,19 +43,19 @@ export default function Supermarket() {
 
   return (
     <main>
-      <h1>🛒 Supermercado</h1>
+      <h1>Supermercado</h1>
       {period && <PeriodNav period={period} onShift={(d) => setOffset(offset + d)} />}
 
       <ul className="tiles">
         {TILES.map((t) => (
-          <li key={t.to}><Link to={t.to}><span>{t.icon}</span>{t.title}</Link></li>
+          <li key={t.to}><Link to={t.to}><Icon name={t.icon} />{t.title}</Link></li>
         ))}
       </ul>
 
       <section className="panel">
         <div className="muted small">Total Supermercado no Mês</div>
         <div className="total">{formatBRL(spent)}</div>
-        {(budget > 0 || editing) && <Bar value={spent} max={budget} />}
+        {(budget > 0 || editing) && <Bar value={spent} max={budget} label="Gasto do mês em relação ao orçamento" />}
         {budget > 0 && (
           <div className={`small ${spent > budget ? "error" : "muted"}`}>
             {spent > budget ? `Orçamento excedido em ${formatBRL(spent - budget)}` : `Orçamento: ${formatBRL(budget)} · restam ${formatBRL(budget - spent)}`}
@@ -62,15 +63,15 @@ export default function Supermarket() {
         )}
         {editing ? (
           <form className="row" onSubmit={(e) => { e.preventDefault(); if (valid) save.mutate(); }}>
-            <input inputMode="decimal" placeholder="Orçamento do mês (R$)" value={text} onChange={(e) => setText(e.target.value)} autoFocus />
+            <label className="field grow"><span>Orçamento do mês (R$)</span><input inputMode="decimal" placeholder="Ex: 1500" value={text} onChange={(e) => setText(e.target.value)} autoFocus /></label>
             <button type="submit" disabled={!valid || save.isPending}>Salvar</button>
           </form>
         ) : (
-          <button type="button" className="link" onClick={() => setEditing(true)}>🎯 {budget > 0 ? "Alterar orçamento mensal" : "Definir orçamento mensal"}</button>
+          <button type="button" className="link" onClick={() => setEditing(true)}><Icon name="target" size={20} />{budget > 0 ? "Alterar orçamento mensal" : "Definir orçamento mensal"}</button>
         )}
       </section>
 
-      <Link to="/lists" className="big-btn">＋ Nova compra (lista)</Link>
+      <Link to="/lists" className="big-btn"><Icon name="plus" size={20} /> Nova compra (lista)</Link>
 
       <h2 className="sector">COMPRAS DO MÊS ({purchases.length})</h2>
       {!purchases.length && <p className="muted">Nenhuma compra registrada. Finalize uma lista para ela aparecer aqui.</p>}

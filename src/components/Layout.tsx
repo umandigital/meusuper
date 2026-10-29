@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from "react-router-dom";
+import Icon, { type IconName } from "./Icon";
 
-const TABS = [
-  { to: "/", label: "Início", icon: "🏠", end: true },
-  { to: "/supermarket", label: "Mercado", icon: "🛒" },
-  { to: "/planning", label: "Plano", icon: "🎯" },
-  { to: "/settings", label: "Ajustes", icon: "⚙️" },
+const TABS: { to: string; label: string; icon: IconName; end?: boolean }[] = [
+  { to: "/", label: "Início", icon: "home", end: true },
+  { to: "/supermarket", label: "Mercado", icon: "cart" },
+  { to: "/planning", label: "Plano", icon: "target" },
+  { to: "/settings", label: "Ajustes", icon: "sliders" },
 ];
 
 export default function Layout() {
@@ -17,10 +18,10 @@ export default function Layout() {
       <div className="content">
         <Outlet />
       </div>
-      <nav className="bottom-nav">
+      <nav className="bottom-nav" aria-label="Navegação principal">
         {TABS.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => (isActive ? "active" : "")}>
-            <span>{t.icon}</span>
+            <Icon name={t.icon} />
             {t.label}
           </NavLink>
         ))}

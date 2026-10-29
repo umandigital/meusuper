@@ -6,6 +6,7 @@ import { todayIso } from "../lib/period";
 import { CATEGORIES } from "../lib/categories";
 import { addExpense, deleteExpense, getExpenses } from "../services/expenses";
 import { formatBRL } from "../lib/format";
+import Icon from "../components/Icon";
 
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
 
@@ -62,16 +63,16 @@ export default function Expenses() {
         }}
       >
         <h2>Adicionar despesa</h2>
-        <input placeholder="Ex: Conta de luz, Uber..." value={description} onChange={(e) => setDescription(e.target.value)} />
+        <label className="field"><span>Descrição</span><input placeholder="Ex: Conta de luz, Uber..." value={description} onChange={(e) => setDescription(e.target.value)} /></label>
         <div className="two">
-          <input inputMode="decimal" placeholder="Valor" value={value} onChange={(e) => setValue(e.target.value)} />
-          <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Categoria">
+          <label className="field"><span>Valor (R$)</span><input inputMode="decimal" placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)} /></label>
+          <label className="field"><span>Categoria</span><select value={category} onChange={(e) => setCategory(e.target.value)}>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          </select></label>
         </div>
-        <input type="date" value={date} min={period?.start} max={period?.end} onChange={(e) => setDate(e.target.value)} aria-label="Data" />
-        <button type="submit" className="primary" disabled={!valid || add.isPending}>＋ Adicionar</button>
-        {add.isError && <p className="error">Não foi possível salvar. Tente novamente.</p>}
+        <label className="field"><span>Data</span><input type="date" value={date} min={period?.start} max={period?.end} onChange={(e) => setDate(e.target.value)} /></label>
+        <button type="submit" className="primary" disabled={!valid || add.isPending}><Icon name="plus" size={18} /> Adicionar</button>
+        {add.isError && <p className="error" role="alert">Não foi possível salvar. Tente novamente.</p>}
       </form>
 
       <h2 className="sector">DESPESAS DO MÊS ({expenses.length})</h2>
@@ -91,7 +92,7 @@ export default function Expenses() {
               aria-label={`Excluir ${e.description}`}
               onClick={() => confirm(`Excluir a despesa "${e.description}"?`) && remove.mutate(e.id)}
             >
-              ✕
+              <Icon name="x" size={20} />
             </button>
           </li>
         ))}

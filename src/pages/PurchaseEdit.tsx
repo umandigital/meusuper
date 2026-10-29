@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPurchase, updatePurchase } from "../services/purchases";
 import { STORES, type StoreName } from "../lib/stores";
 import { formatBRL } from "../lib/format";
+import Icon from "../components/Icon";
 
 interface Row { id: string; name: string; brand: string | null; qty: string; price: string }
 
@@ -39,11 +40,11 @@ export default function PurchaseEdit() {
 
   const set = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
-  if (!purchase) return <main><Link to="/history" className="back">← Histórico</Link></main>;
+  if (!purchase) return <main><Link to="/history" className="back"><Icon name="arrow-left" size={20} />Histórico</Link></main>;
 
   return (
     <main>
-      <Link to="/history" className="back">← Histórico</Link>
+      <Link to="/history" className="back"><Icon name="arrow-left" size={20} />Histórico</Link>
       <h1>Editar compra</h1>
 
       <section className="panel">
@@ -61,7 +62,7 @@ export default function PurchaseEdit() {
         {rows.map((r, i) => (
           <li key={r.id} className="edit-row">
             <div className="name">{r.name}{r.brand && <small className="muted"> · {r.brand}</small>}</div>
-            <button type="button" className="ghost" aria-label={`Remover ${r.name}`} onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>✕</button>
+            <button type="button" className="ghost" aria-label={`Remover ${r.name}`} onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}><Icon name="x" size={20} /></button>
             <div className="meta">
               <label>Qtd <input inputMode="decimal" value={r.qty} onChange={(e) => set(i, { qty: e.target.value })} aria-label={`Quantidade de ${r.name}`} /></label>
               <label>Preço (R$) <input inputMode="decimal" value={r.price} onChange={(e) => set(i, { price: e.target.value })} aria-label={`Preço de ${r.name}`} /></label>

@@ -9,6 +9,7 @@ import { average, bySector, change, topProducts } from "../lib/stats";
 import { SECTORS } from "../lib/sectors";
 import { formatBRL } from "../lib/format";
 import { getCommitted, getSeries, getSoldItems } from "../services/stats";
+import Icon from "../components/Icon";
 
 const MONTHS_SHOWN = 6;
 const monthName = (key: string) => new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -51,7 +52,7 @@ export default function Statistics() {
         {sectors.map((s) => (
           <div key={s.sector.value} className="compare">
             <div className="split"><span>{s.sector.emoji} {s.sector.label}</span><strong>{formatBRL(s.total)} <small className="muted">({Math.round((s.total / sectorsTotal) * 100)}%)</small></strong></div>
-            <Bar value={s.total} max={sectorsTotal} />
+            <Bar value={s.total} max={sectorsTotal} label={`${s.sector.label}: parte do gasto total`} />
           </div>
         ))}
       </section>
@@ -103,7 +104,7 @@ function Delta({ label, value, goodWhenDown }: { label: string; value: number | 
   return (
     <div className="split">
       <span className="muted">{label}</span>
-      <strong className={cls}>{up ? "▲" : value < 0 ? "▼" : "•"} {Math.abs(value).toFixed(1).replace(".", ",")}%</strong>
+      <strong className={cls}>{Math.abs(value) >= 0.05 && <Icon name={up ? "arrow-up" : "arrow-down"} size={16} />} {up ? "alta de " : value < 0 ? "queda de " : ""}{Math.abs(value).toFixed(1).replace(".", ",")}%</strong>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { listAsText } from "../lib/share";
 import { SECTORS } from "../lib/sectors";
 import { STORES, type StoreName } from "../lib/stores";
 import type { Brand, Price } from "../types/db";
+import Icon from "../components/Icon";
 
 const NEW_BRAND = "__new__";
 
@@ -202,7 +203,7 @@ export default function ListDetail() {
 
   return (
     <main>
-      <Link to="/lists" className="back">← Listas</Link>
+      <Link to="/lists" className="back"><Icon name="arrow-left" size={20} />Listas</Link>
       <h1>{list?.name}</h1>
       <label className="store-pick">
         Mercado
@@ -232,15 +233,15 @@ export default function ListDetail() {
           </div>
         )}
         {inCart.length > 0 && (
-          <div className="cart">🛒 No carrinho: <strong>{formatBRL(cartTotal)}</strong> ({inCart.length} de {items.length})</div>
+          <div className="cart"><Icon name="cart" size={18} /> No carrinho: <strong>{formatBRL(cartTotal)}</strong> ({inCart.length} de {items.length})</div>
         )}
       </section>
 
-      {items.length > 0 && <button type="button" className="link" onClick={shareList}>📤 Compartilhar lista</button>}
+      {items.length > 0 && <button type="button" className="link" onClick={shareList}><Icon name="share" size={20} />Compartilhar lista</button>}
 
       <div className="search-row">
         <ProductSearch onPick={(p) => add.mutate(p.id)} />
-        <button type="button" className="scan-btn" onClick={() => setScanning(true)} aria-label="Escanear código de barras">📷</button>
+        <button type="button" className="scan-btn" onClick={() => setScanning(true)} aria-label="Escanear código de barras"><Icon name="camera" size={22} /></button>
       </div>
 
       {!items.length && <p className="muted">Adicione itens usando o campo acima.</p>}
@@ -250,7 +251,7 @@ export default function ListDetail() {
           <div className="muted small">Você costuma comprar:</div>
           <div className="chips">
             {suggestions.map((f) => (
-              <button key={f.product.id} type="button" onClick={() => addFrequent.mutate(f)}>＋ {f.product.name} <small>×{f.count}</small></button>
+              <button key={f.product.id} type="button" onClick={() => addFrequent.mutate(f)}><Icon name="plus" size={16} /> {f.product.name} <small>×{f.count}</small></button>
             ))}
           </div>
         </section>
@@ -323,13 +324,13 @@ function ItemRow(props: {
 
   return (
     <li className={item.checked ? "done" : ""}>
-      <input type="checkbox" checked={item.checked} onChange={(ev) => props.onCheck(ev.target.checked)} aria-label={`Marcar ${item.product.name}`} />
+      <label className="check"><input type="checkbox" checked={item.checked} onChange={(ev) => props.onCheck(ev.target.checked)} aria-label={`Marcar ${item.product.name}`} /></label>
       <div className="name">{item.product.name}</div>
       <div className="price">
         <strong>{formatBRL(unit * item.quantity)}</strong>
         {hint && <small className={e.source === "none" && item.paid_price == null ? "warn" : ""}>{hint}</small>}
       </div>
-      <button type="button" className="ghost" onClick={props.onRemove} aria-label="Remover">✕</button>
+      <button type="button" className="ghost" onClick={props.onRemove} aria-label={`Remover ${item.product.name}`}><Icon name="x" size={20} /></button>
       <div className="meta">
         <select value={item.brand_id ?? ""} onChange={(ev) => props.onBrand(ev.target.value)} aria-label="Marca">
           <option value="">Qualquer marca</option>
@@ -343,7 +344,7 @@ function ItemRow(props: {
               {opts.others.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </optgroup>
           )}
-          <option value={NEW_BRAND}>＋ Nova marca…</option>
+          <option value={NEW_BRAND}>+ Nova marca…</option>
         </select>
         <div className="qty">
           <button type="button" onClick={() => props.onQty(item.quantity - step)} aria-label="Menos">−</button>

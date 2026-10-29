@@ -37,11 +37,11 @@ export default function NewCodeSheet({ code, brands, onSave, onCancel }: {
         ) : (
           <ProductSearch onPick={setProduct} />
         )}
-        <input list="brand-options" placeholder="Marca (opcional)" value={brand} onChange={(e) => setBrand(e.target.value)} />
+        <label className="field"><span>Marca (opcional)</span><input list="brand-options" placeholder="Ex: Tio João" value={brand} onChange={(e) => setBrand(e.target.value)} /></label>
         <datalist id="brand-options">
           {brands.map((b) => <option key={b.id} value={b.name} />)}
         </datalist>
-        <input inputMode="decimal" placeholder="Preço na prateleira (opcional)" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <label className="field"><span>Preço na prateleira (opcional)</span><input inputMode="decimal" placeholder="0,00" value={price} onChange={(e) => setPrice(e.target.value)} /></label>
         <div className="create">
           <button
             type="button"

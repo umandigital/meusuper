@@ -7,6 +7,7 @@ import { periodFor } from "../lib/period";
 import { addPlanItem, copyPreviousMonth, deletePlanItem, getPlan, type PlanItem } from "../services/plan";
 import { expectedBalance, getMonthData, type PlanKind } from "../services/month";
 import { formatBRL } from "../lib/format";
+import Icon from "../components/Icon";
 
 const SECTIONS: { kind: PlanKind; title: string; placeholder: string; installments: boolean }[] = [
   { kind: "income", title: "Receitas previstas", placeholder: "Ex: Salário, Freelance...", installments: false },
@@ -102,7 +103,7 @@ function Compare({ label, planned, real }: { label: string; planned: number; rea
   return (
     <div className="compare">
       <div className="split"><strong>{label}</strong><span className={real > planned && planned > 0 ? "error" : "muted"}>{formatBRL(real)} de {formatBRL(planned)}</span></div>
-      <Bar value={real} max={planned} />
+      <Bar value={real} max={planned} label={`${label}: gasto em relação ao previsto`} />
     </div>
   );
 }
@@ -130,22 +131,22 @@ function Section(props: {
   const total = props.items.reduce((s, i) => s + i.amount, 0);
 
   return (
-    <form className="panel" onSubmit={(e) => { e.preventDefault(); if (valid) add.mutate(); }}>
+    <form className="panel" aria-label={props.title} onSubmit={(e) => { e.preventDefault(); if (valid) add.mutate(); }}>
       <div className="split"><h2>{props.title}</h2><strong>{formatBRL(total)}</strong></div>
       <ul className="plain">
         {props.items.map((i) => (
           <li key={i.id}>
             <span className="grow">{i.description}</span>
             <strong>{formatBRL(i.amount)}</strong>
-            <button type="button" className="ghost" aria-label={`Remover ${i.description}`} onClick={() => props.onRemove(i.id)}>✕</button>
+            <button type="button" className="ghost" aria-label={`Remover ${i.description}`} onClick={() => props.onRemove(i.id)}><Icon name="x" size={20} /></button>
           </li>
         ))}
       </ul>
-      <input placeholder={props.placeholder} value={name} onChange={(e) => setName(e.target.value)} aria-label={`Descrição: ${props.title}`} />
+      <label className="field"><span>Descrição</span><input placeholder={props.placeholder} value={name} onChange={(e) => setName(e.target.value)} /></label>
       <div className="row tight">
-        <input inputMode="decimal" placeholder="Valor" value={value} onChange={(e) => setValue(e.target.value)} aria-label={`Valor: ${props.title}`} />
-        {props.installments && <input inputMode="numeric" placeholder="Parcelas" value={parcels} onChange={(e) => setParcels(e.target.value)} aria-label={`Parcelas: ${props.title}`} />}
-        <button type="submit" disabled={!valid || add.isPending} aria-label={`Adicionar: ${props.title}`}>＋</button>
+        <label className="field grow"><span>Valor (R$)</span><input inputMode="decimal" placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)} /></label>
+        {props.installments && <label className="field grow"><span>Parcelas</span><input inputMode="numeric" placeholder="1" value={parcels} onChange={(e) => setParcels(e.target.value)} /></label>}
+        <button type="submit" disabled={!valid || add.isPending} aria-label={`Adicionar: ${props.title}`}><Icon name="plus" size={20} /></button>
       </div>
       {parcels.trim() && n > 1 && valid && <p className="muted small">Entra neste mês e nos próximos {n - 1}: {n}x de {formatBRL(amount)}.</p>}
       {add.isError && <p className="error">Não foi possível salvar.</p>}

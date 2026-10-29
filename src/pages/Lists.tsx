@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createList, deleteList, getLists } from "../services/lists";
 import { getLatestPurchaseId, repeatPurchase } from "../services/purchases";
 import { autoListName, STORES, type StoreName } from "../lib/stores";
+import Icon from "../components/Icon";
 
 const LAST_STORE_KEY = "meusuper:lastStore";
 
@@ -52,18 +53,18 @@ export default function Lists() {
           create.mutate();
         }}
       >
-        <select value={store} onChange={(e) => setStore(e.target.value as StoreName)} aria-label="Mercado">
+        <label className="field grow"><span>Mercado</span><select value={store} onChange={(e) => setStore(e.target.value as StoreName)}>
           {STORES.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
-        </select>
+        </select></label>
         <button type="submit" disabled={create.isPending}>Nova lista</button>
       </form>
       {latestId && (
-        <button type="button" className="link" onClick={() => repeat.mutate()} disabled={repeat.isPending}>🔁 Repetir a última compra</button>
+        <button type="button" className="link" onClick={() => repeat.mutate()} disabled={repeat.isPending}><Icon name="repeat" size={20} />Repetir a última compra</button>
       )}
       {repeat.isError && <p className="error">Não foi possível repetir a compra. Tente novamente.</p>}
-      {create.isError && <p className="error">Não foi possível criar a lista. Tente novamente.</p>}
+      {create.isError && <p className="error" role="alert">Não foi possível criar a lista. Tente novamente.</p>}
       {isLoading && <p className="muted">Carregando…</p>}
       {!isLoading && !lists.length && <p className="muted">Nenhuma lista. Escolha o mercado e toque em “Nova lista”.</p>}
       <ul className="cards">
@@ -81,7 +82,7 @@ export default function Lists() {
               aria-label={`Excluir lista ${l.name}`}
               onClick={() => confirm(`Excluir a lista de ${l.name}?`) && remove.mutate(l.id)}
             >
-              ✕
+              <Icon name="x" size={20} />
             </button>
           </li>
         ))}

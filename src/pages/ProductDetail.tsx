@@ -8,6 +8,7 @@ import { SECTORS } from "../lib/sectors";
 import { UNITS, unitSuffix } from "../lib/units";
 import { formatBRL } from "../lib/format";
 import type { Unit } from "../types/db";
+import Icon from "../components/Icon";
 
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
 
@@ -50,13 +51,13 @@ export default function ProductDetail() {
   const dropPrice = useMutation({ mutationFn: deletePrice, onSuccess: refreshAll });
   const dropCode = useMutation({ mutationFn: deleteProductBrand, onSuccess: refreshAll });
 
-  if (!product) return <main><Link to="/products" className="back">← Produtos</Link></main>;
+  if (!product) return <main><Link to="/products" className="back"><Icon name="arrow-left" size={20} />Produtos</Link></main>;
 
   const dirty = name.trim() !== product.name || sector !== product.sector || unit !== product.unit;
 
   return (
     <main>
-      <Link to="/products" className="back">← Produtos</Link>
+      <Link to="/products" className="back"><Icon name="arrow-left" size={20} />Produtos</Link>
       <h1>{product.name}</h1>
 
       {mine ? (
@@ -100,7 +101,7 @@ export default function ProductDetail() {
               aria-label="Remover código"
               onClick={() => confirm("Remover este código de barras? O produto continua cadastrado.") && dropCode.mutate(b.id)}
             >
-              ✕
+              <Icon name="x" size={20} />
             </button>
           </li>
         ))}
@@ -121,7 +122,7 @@ export default function ProductDetail() {
               aria-label="Apagar este preço"
               onClick={() => confirm("Apagar este preço do histórico?") && dropPrice.mutate(p.id)}
             >
-              ✕
+              <Icon name="x" size={20} />
             </button>
           </li>
         ))}

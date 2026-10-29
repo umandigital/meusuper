@@ -10,6 +10,7 @@ import { formatBRL } from "../lib/format";
 import { fetchReceipt, getAliases, importReceipt, type ReceiptError } from "../services/receipt";
 import { listProducts } from "../services/products";
 import type { Product } from "../types/db";
+import Icon from "../components/Icon";
 
 type Choice = { kind: "product"; product: Product } | { kind: "new"; name: string; sector: string } | { kind: "skip" } | { kind: "pick" };
 interface Row { name: string; quantity: number; unit: string; unit_price: number; choice: Choice; suggested: Product | null }
@@ -100,20 +101,20 @@ export default function ReceiptImport() {
 
   return (
     <main>
-      <Link to="/history" className="back">← Histórico</Link>
+      <Link to="/history" className="back"><Icon name="arrow-left" size={20} />Histórico</Link>
       <h1>Importar nota fiscal</h1>
 
       {!receipt && (
         <section className="panel">
           <p className="muted small">Leia o QR Code da nota fiscal (NFC-e) do mercado. Os itens e preços entram como uma compra.</p>
-          <button type="button" className="primary" onClick={() => { setError(""); setScanning(true); }} disabled={loading || !dataReady}>📷 Ler QR Code da nota</button>
+          <button type="button" className="primary" onClick={() => { setError(""); setScanning(true); }} disabled={loading || !dataReady}><Icon name="camera" size={20} /> Ler QR Code da nota</button>
           <form className="row tight" onSubmit={(e) => { e.preventDefault(); void load(link); }}>
-            <input placeholder="ou cole o link da nota" value={link} onChange={(e) => setLink(e.target.value)} aria-label="Link da nota" />
+            <label className="field grow"><span>Ou cole o link da nota</span><input placeholder="https://www.sefaz.rs.gov.br/..." value={link} onChange={(e) => setLink(e.target.value)} /></label>
             <button type="submit" disabled={!link.trim() || loading || !dataReady}>Buscar</button>
           </form>
           {!dataReady && <p className="muted small">Carregando seus produtos…</p>}
           {loading && <p className="muted">Buscando a nota…</p>}
-          {error && <p className="error">{error}</p>}
+          {error && <p className="error" role="alert">{error}</p>}
         </section>
       )}
 

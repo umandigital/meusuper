@@ -31,12 +31,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <form className="login" onSubmit={signIn}>
+    <main><form className="login" onSubmit={signIn}>
       <h1>MeuSuper</h1>
-      <input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      {error && <p className="error">{error}</p>}
+      <label className="field"><span>E-mail</span><input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+      <label className="field"><span>Senha</span><input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+      {error && <p className="error" role="alert">{error}</p>}
       <button type="submit">Entrar</button>
-    </form>
+    </form></main>
   );
 }

@@ -4,6 +4,7 @@ import { getStartDay, saveStartDay } from "../services/settings";
 import { supabase } from "../lib/supabase";
 import { useSession } from "../lib/auth";
 import { periodFor, shortDate } from "../lib/period";
+import Icon from "../components/Icon";
 
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
@@ -54,7 +55,7 @@ export default function Settings() {
         >
           {save.isPending ? "Salvando…" : "Salvar"}
         </button>
-        {done && <p className="ok">✅ Período financeiro atualizado!</p>}
+        {done && <p className="ok" role="status"><Icon name="check" size={18} /> Período financeiro atualizado!</p>}
         {save.isError && <p className="error">Não foi possível salvar. Tente novamente.</p>}
       </section>
 

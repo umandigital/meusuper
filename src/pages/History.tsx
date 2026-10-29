@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deletePurchase, getPurchaseItems, getPurchases, repeatPurchase, type PurchaseRow } from "../services/purchases";
 import { formatBRL } from "../lib/format";
+import Icon from "../components/Icon";
 
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
 
@@ -11,7 +12,7 @@ export default function History() {
   return (
     <main>
       <h1>Histórico</h1>
-      <Link to="/import" className="link">🧾 Importar nota fiscal</Link>
+      <Link to="/import" className="link"><Icon name="receipt" size={20} />Importar nota fiscal</Link>
       {isLoading && <p className="muted">Carregando…</p>}
       {!isLoading && !purchases.length && <p className="muted">Nenhuma compra ainda. Finalize uma lista para ela aparecer aqui.</p>}
       <ul className="cards">
@@ -60,15 +61,15 @@ function PurchaseCard({ p }: { p: PurchaseRow }) {
       )}
       {open && (
         <div className="purchase-actions">
-          <button type="button" onClick={() => repeat.mutate()} disabled={repeat.isPending}>🔁 Repetir</button>
-          <Link to={`/history/${p.id}`}>✏️ Editar</Link>
+          <button type="button" onClick={() => repeat.mutate()} disabled={repeat.isPending}><Icon name="repeat" size={18} />Repetir</button>
+          <Link to={`/history/${p.id}`}><Icon name="edit" size={18} />Editar</Link>
           <button
             type="button"
             className="danger-text"
             disabled={remove.isPending}
             onClick={() => confirm(`Excluir a compra de ${fmtDate(p.purchased_at)} (${formatBRL(Number(p.total))})?\nOs preços dela também saem do histórico de preços.`) && remove.mutate()}
           >
-            🗑️ Excluir
+            <Icon name="trash" size={18} />Excluir
           </button>
         </div>
       )}

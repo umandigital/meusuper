@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createProduct, searchProducts } from "../services/catalog";
 import { SECTORS } from "../lib/sectors";
 import type { Product } from "../types/db";
+import Icon from "./Icon";
 
 export default function ProductSearch({ onPick }: { onPick: (p: Product) => void }) {
   const [term, setTerm] = useState("");
@@ -58,7 +59,7 @@ export default function ProductSearch({ onPick }: { onPick: (p: Product) => void
                 </div>
               ) : (
                 <button type="button" onClick={() => setCreating(true)}>
-                  <span>＋</span>
+                  <Icon name="plus" size={18} />
                   <span className="grow">Criar “{term.trim()}”</span>
                 </button>
               )}

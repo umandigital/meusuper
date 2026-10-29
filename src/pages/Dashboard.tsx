@@ -4,14 +4,15 @@ import Bar from "../components/Bar";
 import { usePeriod } from "../lib/usePeriod";
 import { expectedBalance, getMonthData } from "../services/month";
 import { formatBRL } from "../lib/format";
+import Icon, { type IconName } from "../components/Icon";
 
-const MODULES = [
-  { to: "/planning", icon: "🎯", title: "Planejamento Mensal", sub: "Previsto vs Realizado" },
-  { to: "/supermarket", icon: "🛒", title: "Supermercado", sub: "Compras, listas e produtos" },
-  { to: "/expenses", icon: "👛", title: "Despesas Gerais", sub: "Contas, transporte, lazer..." },
-  { to: "/statistics", icon: "📊", title: "Estatísticas", sub: "Análises e relatórios" },
-  { to: "/settings", icon: "⚙️", title: "Ajustes", sub: "Período financeiro e preferências" },
-  { to: "/tutorial", icon: "❔", title: "Como usar o app", sub: "Tutorial e explicações" },
+const MODULES: { to: string; icon: IconName; title: string; sub: string }[] = [
+  { to: "/planning", icon: "target", title: "Planejamento Mensal", sub: "Previsto vs Realizado" },
+  { to: "/supermarket", icon: "cart", title: "Supermercado", sub: "Compras, listas e produtos" },
+  { to: "/expenses", icon: "wallet", title: "Despesas Gerais", sub: "Contas, transporte, lazer..." },
+  { to: "/statistics", icon: "chart", title: "Estatísticas", sub: "Análises e relatórios" },
+  { to: "/settings", icon: "sliders", title: "Ajustes", sub: "Período financeiro e preferências" },
+  { to: "/tutorial", icon: "help", title: "Como usar o app", sub: "Tutorial e explicações" },
 ];
 
 export default function Dashboard() {
@@ -32,11 +33,11 @@ export default function Dashboard() {
 
       <section className="panel">
         <h2>Saldo previsto x Despesas Gerais</h2>
-        <Bar value={data?.general ?? 0} max={balance} />
+        <Bar value={data?.general ?? 0} max={balance} label="Despesas gerais em relação ao saldo previsto" />
         <div className="split small muted"><span>Saldo previsto: {formatBRL(balance)}</span><span>Despesas Gerais: {formatBRL(data?.general ?? 0)}</span></div>
         <hr />
         <h2>Supermercado – Orçamento x Gasto</h2>
-        <Bar value={data?.supermarket ?? 0} max={budget} />
+        <Bar value={data?.supermarket ?? 0} max={budget} label="Gasto no supermercado em relação ao orçamento" />
         <div className="split small muted"><span>Orçamento: {formatBRL(budget)}</span><span>Gasto até agora: {formatBRL(data?.supermarket ?? 0)}</span></div>
       </section>
 
@@ -44,7 +45,7 @@ export default function Dashboard() {
       <ul className="cards">
         <li>
           <Link to="/expenses">
-            <span className="icon big">＋</span>
+            <span className="icon big"><Icon name="plus" /></span>
             <span className="grow"><strong>Adicionar Despesa</strong><small>Supermercado ou despesa geral</small></span>
           </Link>
         </li>
@@ -55,7 +56,7 @@ export default function Dashboard() {
         {MODULES.map((m) => (
           <li key={m.to}>
             <Link to={m.to}>
-              <span className="icon">{m.icon}</span>
+              <span className="icon"><Icon name={m.icon} /></span>
               <span className="grow"><strong>{m.title}</strong><small>{m.sub}</small></span>
             </Link>
           </li>

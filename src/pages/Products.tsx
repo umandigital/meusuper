@@ -7,6 +7,7 @@ import { SECTORS } from "../lib/sectors";
 import { UNITS, unitSuffix } from "../lib/units";
 import { formatBRL } from "../lib/format";
 import type { Unit } from "../types/db";
+import Icon from "../components/Icon";
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const fmtDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
@@ -51,7 +52,7 @@ export default function Products() {
       <h1>Meus Produtos</h1>
       <div className="row">
         <input type="search" placeholder="Buscar produto…" value={term} onChange={(e) => setTerm(e.target.value)} />
-        <button type="button" onClick={() => setAdding(!adding)}>{adding ? "Fechar" : "＋ Novo"}</button>
+        <button type="button" onClick={() => setAdding(!adding)}>{adding ? "Fechar" : <><Icon name="plus" size={18} /> Novo</>}</button>
       </div>
 
       {adding && (
@@ -62,7 +63,7 @@ export default function Products() {
             if (name.trim()) create.mutate();
           }}
         >
-          <input placeholder="Nome do produto" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <label className="field"><span>Nome do produto</span><input placeholder="Ex: Arroz integral 1kg" value={name} onChange={(e) => setName(e.target.value)} autoFocus /></label>
           <select value={newSector} onChange={(e) => setNewSector(e.target.value)} aria-label="Setor">
             {SECTORS.map((s) => <option key={s.value} value={s.value}>{s.emoji} {s.label}</option>)}
           </select>
