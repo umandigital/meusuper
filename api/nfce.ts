@@ -13,6 +13,8 @@ export interface Receipt {
   date: string | null;
   items: { name: string; quantity: number; unit: string; unit_price: number }[];
   total: number | null;
+  expectedItems?: number | null;
+  parsedLines?: number;
 }
 
 const ALLOWED_HOST = /(^|\.)(sefaz\.rs\.gov\.br|svrs\.rs\.gov\.br|fazenda\.gov\.br)$/;
@@ -89,8 +91,9 @@ export function parseNfce(html: string): Receipt {
   const store = decode(html.match(/class="txtTopo"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "") || null;
   const d = html.match(/Emiss[ãa]o[\s\S]{0,120}?(\d{2})\/(\d{2})\/(\d{4})/i) ?? html.match(/(\d{2})\/(\d{2})\/(\d{4})\s+\d{2}:\d{2}:\d{2}/);
   const date = d ? `${d[3]}-${d[2]}-${d[1]}` : null;
-  const totalRaw = html.match(/Valor\s+total\s+R\$[\s\S]*?class="totalNumb[^"]*"[^>]*>\s*([\d.,]+)/i)?.[1];
-  return { store, date, items, total: totalRaw ? num(totalRaw) : null };
+  const totalRaw = html.match(/Valor\s+(?:total|a\s+pagar)\s+R\$[\s\S]*?class="totalNumb[^"]*"[^>]*>\s*([\d.,]+)/i)?.[1];
+  const expected = decode(html).match(/Qtd\.?\s*total\s*de\s*itens:?\s*(\d+)/i)?.[1];
+  return { store, date, items, total: totalRaw ? num(totalRaw) : null, expectedItems: expected ? Number(expected) : null, parsedLines: items.length };
 }
 
 /** Texto visivel da pagina (sem scripts), com CPF mascarado, para calibrar o leitor quando o layout for desconhecido. */

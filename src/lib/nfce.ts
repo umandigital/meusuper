@@ -55,11 +55,16 @@ export function matchProduct(
   if (!rt.length) return null;
   const rset = new Set(rt);
   // abreviacao de nota: "int" cobre "integral", "refrig" cobre "refrigerante" (so palavras, nao tamanhos como 5kg)
+  // tamanhos (5kg, 200ml, 1.5l): se os dois lados tem tamanho e nenhum coincide, e outro produto
+  const isSize = (t: string) => /^\d+(\.\d+)?(kg|g|ml|l)$/.test(t);
+  const rsizes = rt.filter(isSize);
   const covers = (t: string) => rset.has(t) || (!/\d/.test(t) && rt.some((r) => r.length >= 3 && r !== t && !/\d/.test(r) && t.startsWith(r)));
   let best: { p: Product; common: number; size: number; own: boolean } | null = null;
   for (const p of products) {
     const pt = tokens(p.name);
     if (!pt.length) continue;
+    const psizes = pt.filter(isSize);
+    if (psizes.length && rsizes.length && !psizes.some((z) => rsizes.includes(z))) continue;
     const common = pt.filter(covers).length;
     if (common < Math.max(1, Math.ceil(pt.length * 0.6)) || common < pt.length - 1) continue;
     const cand = { p, common, size: pt.length, own: !!p.user_id };
@@ -96,4 +101,7 @@ export interface Receipt {
   date: string | null; // YYYY-MM-DD
   items: { name: string; quantity: number; unit: string; unit_price: number; barcode?: string | null }[];
   total: number | null;
+  /** "Qtd. total de itens" impresso na nota, e quantas linhas foram lidas: se diferirem, algo ficou de fora. */
+  expectedItems?: number | null;
+  parsedLines?: number;
 }

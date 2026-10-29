@@ -94,6 +94,9 @@ eq(m("SUCO DEL VALLE UVA 1L"), null, "nota: sem palavras suficientes em comum na
 eq(m("FEIJAO PRETO CAMIL 1KG"), "Feijão preto 1kg", "nota: acento e maiuscula nao atrapalham");
 eq(m("ACUCAR REFINADO UNIAO 1KG"), "Açúcar refinado 1kg", "nota: acucar sem acento");
 eq(m("SHAMPOO XYZ 350ML"), null, "nota: produto desconhecido nao casa");
+eq(m("SUCO INTEGRAL ALIANCA UVA 200ML"), null, "nota: mesmo nome mas tamanho diferente (200ml x 1L) NAO casa");
+eq(m("ARROZ TIO JOAO 2KG"), null, "nota: arroz 2kg nao casa com 5kg nem 1kg");
+eq(m("LEITE INTEGRAL 1 LITRO PIRACANJUBA"), "Leite integral 1L", "nota: sem unidade colada no tamanho continua casando pelo nome quando o tamanho nao aparece");
 eq(m("XPTO 123 ESPECIAL", new Map([[aliasKey("XPTO 123 ESPECIAL"), "5"]])), "Feijão preto 1kg", "nota: alias lembrado tem prioridade (e funciona mesmo sem palavras em comum)");
 eq(accessKeyOf("https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=43261012345678901234567890123456789012345678|2|1|1|ABC"), "43261012345678901234567890123456789012345678", "nota: extrai a chave de 44 digitos");
 eq(accessKeyOf("https://x.com/?p=123"), null, "nota: sem chave");
@@ -179,3 +182,65 @@ const eanMap = new Map([["7891000100103", "3"]]);
 eq(matchProduct("ITEM SEM NOME PARECIDO", cat, new Map(), "7891000100103", eanMap)?.product.name, "Leite integral 1L", "EAN: liga pelo codigo de barras mesmo com nome diferente");
 eq(matchProduct("ARROZ TIO JOAO TP1 5KG", cat, new Map(), "7891000100103", eanMap)?.product.name, "Leite integral 1L", "EAN: tem prioridade sobre o nome");
 eq(matchProduct("ARROZ TIO JOAO TP1 5KG", cat, new Map(), "0000", eanMap)?.product.name, "Arroz branco 5kg", "EAN desconhecido: cai para o nome");
+
+import { parseCupomText } from "../src/lib/cupom.ts";
+// ---- texto como na tela da SEFAZ (print real: itens, totais, emissao e chave)
+const sefazText = `Cupom
+SALGADOS FESTA NICOLINI KG (Código: 17 )
+Qtde.:0,142 UN: KG Vl. Unit.: 59,9
+Vl. Total
+8,51
+CHOCOLATE ARCOR BLOCK RECH PACOCA 165G
+(Código: 1017528 )
+Qtde.:1 UN: UN Vl. Unit.: 19,89
+Vl. Total
+19,89
+MOLHO TOMATE POMAROLA BOLONH SHT 300G (Código: 1009790 ) Qtde.:1 UN: UN Vl. Unit.: 6,49 Vl. Total 6,49
+SUCO INTEGRAL ALIANCA UVA 200ML (Código: 7813966 ) Qtde.:1 UN: UN Vl. Unit.: 4,29 Vl. Total 4,29
+ENERGETICO BALY ENERGY DRINK 2L (Código: 7711969 )
+Qtde.:2 UN: UN Vl. Unit.: 10,9
+Vl. Total
+21,80
+Qtd. total de itens: 6
+Valor a pagar R$: 60,98
+Forma de pagamento: Cartão de Débito 60,98
+Número: 90777 Série: 108 Emissão: 28/10/2026 17:43:19 - Via Consumidor 2
+Chave de acesso:
+4326 1089 8356 7200 3570 6510 8000 0907 7710 0101 6297
+Consumidor não identificado`;
+const cs = parseCupomText(sefazText)!;
+eq(cs.items.length, 5, "cupom SEFAZ: 5 itens (nome em linha propria ou junto do codigo)");
+eq(cs.items[0], { name: "SALGADOS FESTA NICOLINI KG", quantity: 0.142, unit: "KG", unit_price: 59.9, barcode: null }, "cupom SEFAZ: item por peso (0,142 kg a 59,9)");
+eq(cs.items[1].name + "|" + cs.items[1].unit_price, "CHOCOLATE ARCOR BLOCK RECH PACOCA 165G|19.89", "cupom SEFAZ: codigo na linha de baixo usa a linha anterior como nome");
+eq([cs.items[4].quantity, cs.items[4].unit_price], [2, 10.9], "cupom SEFAZ: quantidade 2");
+eq([cs.date, cs.total, cs.expectedItems, cs.parsedLines], ["2026-10-28", 60.98, 6, 5], "cupom SEFAZ: data, total, itens esperados (6) e lidos (5) para o aviso");
+eq(cs.key, "43261089835672003570651080000907771001016297", "cupom SEFAZ: chave de acesso (44 digitos, com espacos)");
+// ---- texto como na tela do app do mercado (print real)
+const appText = `LINGUICA BORRUSSIA DEF MIGNON KG
+001 0.246 KG x R$ 59,90 14,74
+SALSICHA EXCELSIOR DEF 18CM KG
+002 0.934 KG x R$ 18,99 17,74
+DUETO ERVILHA E MILHO FUGINI SHT 170G
+GTIN: 7897517209643
+003 1 UN x R$ 4,99 4,99
+RACAO WHISKAS CARNE SHT 85G
+GTIN: 7896029046609
+004 1 UN x R$ 3,49 3,49
+RACAO WHISKAS CARNE SHT 85G
+GTIN: 7896029046609
+005 1 UN x R$ 3,49 3,49
+RACAO WHISKAS CARNE SHT 85G
+GTIN: 7896029046609
+006 1 UN x R$ 3,49 3,49
+MASSA INST NISSIN YAKISSOBA 500G
+GTIN: 7891079011515
+007 1 UN x R$ 9,49 9,49`;
+const ca = parseCupomText(appText)!;
+eq(ca.items.length, 5, "cupom do app: 7 linhas viram 5 itens (3 racoes iguais somadas)");
+eq(ca.items[0], { name: "LINGUICA BORRUSSIA DEF MIGNON KG", quantity: 0.246, unit: "KG", unit_price: 59.9, barcode: null }, "cupom do app: item por peso (ponto decimal na quantidade)");
+eq(ca.items[2], { name: "DUETO ERVILHA E MILHO FUGINI SHT 170G", quantity: 1, unit: "UN", unit_price: 4.99, barcode: "7897517209643" }, "cupom do app: GTIN vira codigo de barras");
+eq([ca.items[3].name, ca.items[3].quantity, ca.items[3].barcode], ["RACAO WHISKAS CARNE SHT 85G", 3, "7896029046609"], "cupom do app: racao 3x somada");
+eq(ca.parsedLines, 7, "cupom do app: 7 linhas lidas");
+eq(parseCupomText("texto qualquer sem itens"), null, "cupom: texto sem itens e recusado");
+// os dois layouts reais em uma linha so (quando o texto e copiado sem quebras)
+eq(parseCupomText("PAO FRANCES KG (Código: 5 ) Qtde.:0,5 UN: KG Vl. Unit.: 16,9 Vl. Total 8,45 LEITE 1L (Código: 6 ) Qtde.:2 UN: UN Vl. Unit.: 5,19 Vl. Total 10,38")?.items.map((i) => i.name + ":" + i.quantity), ["PAO FRANCES KG:0.5", "LEITE 1L:2"], "cupom: texto colado em uma linha so le todos os itens (o Vl. Total separa)");

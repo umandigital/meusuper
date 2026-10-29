@@ -9,6 +9,7 @@ import { STORES } from "../lib/stores";
 import { formatBRL } from "../lib/format";
 import { fetchReceipt, getAliases, getBarcodes, importReceipt, ReceiptFetchError, type ReceiptError } from "../services/receipt";
 import { parseNfeXml } from "../lib/nfe";
+import { parseCupomText } from "../lib/cupom";
 import { listProducts } from "../services/products";
 import type { Product } from "../types/db";
 import Icon from "../components/Icon";
@@ -41,6 +42,7 @@ export default function ReceiptImport() {
   const [error, setError] = useState("");
   const [debug, setDebug] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pasted, setPasted] = useState("");
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<(Receipt & { key: string | null }) | null>(null);
   const [overrides, setOverrides] = useState<Record<number, Choice>>({});
@@ -53,6 +55,17 @@ export default function ReceiptImport() {
     const s = (r.store ?? "").toLowerCase();
     setStore(s.includes("nicolini") ? "Nicolini" : s.includes("peruzzo") ? "Peruzzo" : "");
     setDate(r.date ?? new Date().toISOString().slice(0, 10));
+  }
+
+  function loadText() {
+    setError("");
+    setDebug("");
+    const parsed = parseCupomText(pasted);
+    if (!parsed) {
+      setError("Não encontrei itens nesse texto. Copie a tela inteira do cupom e cole de novo.");
+      return;
+    }
+    begin(parsed, parsed.key);
   }
 
   async function loadXml(file: File | undefined) {
@@ -137,6 +150,11 @@ export default function ReceiptImport() {
             <span>Arquivo XML da nota (anexo do e-mail do cupom)</span>
             <input type="file" accept=".xml,text/xml,application/xml" disabled={!dataReady} onChange={(e) => void loadXml(e.target.files?.[0])} />
           </label>
+          <label className="field">
+            <span>Ou cole o texto do cupom (tela da SEFAZ ou do app do mercado)</span>
+            <textarea rows={4} placeholder="Selecione todo o texto do cupom, copie e cole aqui" value={pasted} onChange={(e) => setPasted(e.target.value)} />
+          </label>
+          <button type="button" className="primary" disabled={!pasted.trim() || !dataReady} onClick={loadText}>Ler o texto colado</button>
           <form className="row tight" onSubmit={(e) => { e.preventDefault(); void load(link); }}>
             <label className="field grow"><span>Ou cole o link da nota</span><input placeholder="https://www.sefaz.rs.gov.br/..." value={link} onChange={(e) => setLink(e.target.value)} /></label>
             <button type="submit" disabled={!link.trim() || loading || !dataReady}>Buscar</button>
@@ -154,6 +172,11 @@ export default function ReceiptImport() {
 
       {receipt && (
         <>
+          {receipt.expectedItems != null && (receipt.parsedLines ?? receipt.items.length) !== receipt.expectedItems && (
+            <p className="error" role="alert">
+              A nota diz ter {receipt.expectedItems} itens, mas li {receipt.parsedLines ?? receipt.items.length}. Confira a lista antes de importar: pode ter ficado item de fora.
+            </p>
+          )}
           <section className="panel">
             <div className="muted small">{receipt.store ?? "Mercado não identificado"}</div>
             <label className="store-pick">Mercado
