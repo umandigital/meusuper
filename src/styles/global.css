@@ -163,3 +163,18 @@ main { padding-bottom: 72px; }
 .compare { display: grid; gap: 6px; }
 .panel .two { margin-bottom: 0; }
 .panel input[type="date"] { appearance: none; }
+
+.two.three { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.two.three .stat { padding: 12px; }
+.two.three .stat strong { font-size: 17px; }
+select.mini { width: auto; max-width: 55%; padding: 6px 10px; font-size: 13px; }
+.mbars { display: flex; gap: 6px; align-items: flex-end; height: 140px; }
+.mcol { flex: 1; display: grid; gap: 4px; justify-items: center; height: 100%; grid-template-rows: 1fr auto; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.mpair { display: flex; gap: 3px; align-items: flex-end; height: 100%; width: 100%; justify-content: center; }
+.mbar { width: 45%; max-width: 18px; min-height: 2px; border-radius: 4px 4px 0 0; }
+.mbar.a, .dot.a { background: hsl(var(--primary)); }
+.mbar.b, .dot.b { background: hsl(var(--accent)); }
+.legend { display: flex; gap: 14px; margin-top: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+.cards li.tut { align-items: flex-start; gap: 14px; padding: 16px; }
+.tut p { margin: 4px 0 0; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.45; }

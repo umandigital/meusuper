@@ -28,3 +28,14 @@ eq(per("2026-12-20", 10, 1), ["2027-01-10", "2027-02-09", "Janeiro 2027", "2027-
 eq(per("2026-02-15", 1), ["2026-02-01", "2026-02-28", "Fevereiro 2026", "2026-02-01"], "periodo: inicio no dia 1 (fevereiro)");
 eq(per("2028-02-15", 1), ["2028-02-01", "2028-02-29", "Fevereiro 2028", "2028-02-01"], "periodo: fevereiro bissexto");
 eq(per("2026-03-20", 28), ["2026-02-28", "2026-03-27", "Fevereiro 2026", "2026-02-01"], "periodo: inicio no dia 28 (20/03 ainda e o periodo de fevereiro)");
+
+import { bySector, topProducts, average, change, bucketOf } from "../src/lib/stats.ts";
+const it = (name: string, sector: string, quantity: number, unit_price: number): any => ({ quantity, unit_price, product: { name, sector } });
+const sold = [it("Arroz", "mercearia", 2, 30), it("Leite", "frios", 6, 5), it("Arroz", "mercearia", 1, 32), it("Feijao", "mercearia", 1, 9.5)];
+eq(bySector(sold).map((x: any) => [x.sector.value, x.total]), [["mercearia", 101.5], ["frios", 30]], "estatisticas: gasto por setor (ordenado)");
+eq(topProducts(sold, "").map((x: any) => [x.name, x.total, x.qty]), [["Arroz", 92, 3], ["Feijao", 9.5, 1], ["Leite", 30, 6]].sort((a: any, b: any) => b[1] - a[1]), "estatisticas: produtos que mais pesaram");
+eq(topProducts(sold, "frios").map((x: any) => x.name), ["Leite"], "estatisticas: filtro por setor");
+eq(average(122, 2), 61, "estatisticas: ticket medio"); eq(average(10, 0), 0, "estatisticas: ticket medio sem compras");
+eq(change(5000, 4000), 25, "estatisticas: variacao +25%"); eq(change(10, 0), null, "estatisticas: sem base de comparacao");
+const periodos: any = [{ start: "2026-09-10", end: "2026-10-09" }, { start: "2026-10-10", end: "2026-11-09" }];
+eq([bucketOf("2026-10-09", periodos), bucketOf("2026-10-10", periodos), bucketOf("2026-11-10", periodos)], [0, 1, -1], "estatisticas: data cai no periodo certo (limites)");
