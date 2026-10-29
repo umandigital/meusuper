@@ -526,3 +526,13 @@ eq(comData("Dados da NFC-e\nN° 90777 - Série 108\nEmissão\n28/10/2026 às 17:
 eq(comData("Número: 90777 Série: 108 Emissão: 27/10/2026 17:43:19 - Via Consumidor 2"), "2026-10-27", "data: formato da tela da SEFAZ");
 eq(comData("Data de autorização\n26/10/2026 às 17:43:20"), "2026-10-26", "data: so a autorizacao (mesmo dia da emissao)");
 eq(comData("Valor a pagar\nR$ 5,00"), null, "data: ausente continua nula (a tela avisa)");
+
+// Cupom real com as secoes ABERTAS (print do app): data em "Informacoes adicionais", COO e chave quebrada em 2 linhas
+const aberto = real.replace(
+  "Forma de pagamento\nInformações adicionais\nInformações complementares\nSua chave de acesso\n4326 1089 8356 7200 3570 6510 8000 0907 7710 0101 6297",
+  "Forma de pagamento\nCartão de Débito\nR$ 324,37\nInformações adicionais\nDados da NFC-e\nN° 90777 - Série 108\nEmissão\n28/10/2026 às 17:43:19\nProtocolo de autorização\n243262073873948\nData de autorização\n28/10/2026 às 17:43:20\nInformações complementares\nCOO: 101629\nSua chave de acesso\n4326108983567200357065108000090777 10\n01016297",
+);
+const ca2 = parseCupomText(aberto)!;
+eq(ca2.date, "2026-10-28", "cupom real aberto: data de emissao lida (28/10/2026)");
+eq(ca2.key, "43261089835672003570651080000907771001016297", "cupom real aberto: chave quebrada em duas linhas e sem espacos");
+eq([ca2.items.length, ca2.parsedLines, ca2.expectedItems, ca2.total], [24, 32, 32, 324.37], "cupom real aberto: itens, linhas, esperado e total continuam certos");
