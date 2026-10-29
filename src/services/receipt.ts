@@ -36,8 +36,16 @@ export async function getAliases(): Promise<Map<string, string>> {
   return new Map((data as { alias: string; product_id: string }[]).map((r) => [r.alias, r.product_id]));
 }
 
+/** Codigos de barras ja conhecidos: EAN -> produto. */
+export async function getBarcodes(): Promise<Map<string, string>> {
+  const { data, error } = await supabase.from("product_brands").select("barcode, product_id").not("barcode", "is", null);
+  if (error) throw error;
+  return new Map((data as { barcode: string; product_id: string }[]).map((r) => [r.barcode, r.product_id]));
+}
+
 export interface ImportItem {
   alias: string;
+  barcode?: string | null;
   quantity: number;
   unit_price: number;
   product_id?: string;

@@ -151,3 +151,31 @@ eq(parseNfce("<div>Falha inesperada no sistema. Motivo: Modelo (56) desconhecido
 const diag = diagnosticText("<html><head><script>var x=1</script></head><body><table><tr><td>CPF do consumidor</td><td>123.456.789-09</td></tr><tr><td>Item</td><td>ARROZ</td></tr></table></body></html>");
 eq(diag.includes("123.456.789-09") || diag.includes("var x"), false, "diagnostico: CPF mascarado e sem scripts");
 eq(diag.includes("***.***.***-**") && diag.includes("ARROZ"), true, "diagnostico: mantem o texto util");
+
+import { parseNfeXml } from "../src/lib/nfe.ts";
+// XML no layout oficial NFC-e 4.00 (estrutura real do schema; valores inventados)
+const KEY = "43261089835672003570651080000907771001016297";
+const xml = `<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe versao="4.00" Id="NFe${KEY}">
+<ide><cUF>43</cUF><mod>65</mod><serie>108</serie><nNF>90777</nNF><dhEmi>2026-10-28T20:41:03-03:00</dhEmi></ide>
+<emit><CNPJ>89835672003570</CNPJ><xNome>SUPERMERCADO NICOLINI LTDA</xNome><xFant>NICOLINI</xFant></emit>
+<det nItem="1"><prod><cProd>123</cProd><cEAN>7896006744108</cEAN><xProd>ARROZ TIO JOAO TP1 5KG</xProd><NCM>10063021</NCM><CFOP>5102</CFOP><uCom>UN</uCom><qCom>2.0000</qCom><vUnCom>31.5000000000</vUnCom><vProd>63.00</vProd><cEANTrib>7896006744108</cEANTrib><uTrib>UN</uTrib><qTrib>2.0000</qTrib><vUnTrib>31.5000000000</vUnTrib><indTot>1</indTot></prod><imposto><ICMS><ICMS00><vICMS>0.00</vICMS></ICMS00></ICMS></imposto></det>
+<det nItem="2"><prod><cProd>9</cProd><cEAN>SEM GTIN</cEAN><xProd>BANANA PRATA &amp; CIA KG</xProd><uCom>KG</uCom><qCom>1.3500</qCom><vUnCom>6.9900000000</vUnCom><vProd>9.44</vProd></prod></det>
+<det nItem="3"><prod><cProd>7</cProd><cEAN>7891000100103</cEAN><xProd>LEITE INT 1L</xProd><uCom>UN</uCom><qCom>6.0000</qCom><vUnCom>5.9900000000</vUnCom><vProd>35.94</vProd><vDesc>1.20</vDesc></prod></det>
+<total><ICMSTot><vProd>108.38</vProd><vDesc>1.20</vDesc><vNF>107.18</vNF></ICMSTot></total></infNFe></NFe></nfeProc>`;
+const nf = parseNfeXml(xml)!;
+eq(nf.key, KEY, "XML: chave de acesso (do Id)");
+eq(nf.store, "SUPERMERCADO NICOLINI LTDA", "XML: mercado vem do emitente (nao do destinatario)");
+eq(nf.date, "2026-10-28", "XML: data de emissao");
+eq(nf.total, 107.18, "XML: total da nota");
+eq(nf.items.length, 3, "XML: 3 itens");
+eq(nf.items[0], { name: "ARROZ TIO JOAO TP1 5KG", quantity: 2, unit: "UN", unit_price: 31.5, barcode: "7896006744108" }, "XML: item com codigo de barras");
+eq([nf.items[1].name, nf.items[1].unit, nf.items[1].unit_price, nf.items[1].barcode], ["BANANA PRATA & CIA KG", "KG", 6.99, null], "XML: item por peso, entidade decodificada e SEM GTIN vira nulo");
+eq(nf.items[2].unit_price, 5.79, "XML: desconto no item entra no preco pago ((35,94 - 1,20) / 6)");
+eq(parseNfeXml("<html>nao e xml de nota</html>"), null, "XML: arquivo que nao e nota e recusado");
+eq(parseNfeXml(xml.replace(/<nfeProc[^>]*>|<\/nfeProc>/g, ""))?.items.length, 3, "XML: tambem le a NFe sem o envelope nfeProc");
+
+// Reconhecimento pelo codigo de barras do XML (tem prioridade sobre nome e alias)
+const eanMap = new Map([["7891000100103", "3"]]);
+eq(matchProduct("ITEM SEM NOME PARECIDO", cat, new Map(), "7891000100103", eanMap)?.product.name, "Leite integral 1L", "EAN: liga pelo codigo de barras mesmo com nome diferente");
+eq(matchProduct("ARROZ TIO JOAO TP1 5KG", cat, new Map(), "7891000100103", eanMap)?.product.name, "Leite integral 1L", "EAN: tem prioridade sobre o nome");
+eq(matchProduct("ARROZ TIO JOAO TP1 5KG", cat, new Map(), "0000", eanMap)?.product.name, "Arroz branco 5kg", "EAN desconhecido: cai para o nome");

@@ -25,7 +25,7 @@ export const aliasKey = (receiptName: string) => normalizeText(receiptName);
 
 export interface Match {
   product: Product;
-  how: "alias" | "name";
+  how: "barcode" | "alias" | "name";
 }
 
 /**
@@ -33,7 +33,19 @@ export interface Match {
  * depois por palavras em comum. Para valer, o nome do produto precisa estar quase todo contido
  * no texto da nota (arroz + 5kg), assim "arroz 1kg" nao e confundido com "arroz 5kg".
  */
-export function matchProduct(receiptName: string, products: Product[], aliases: Map<string, string>): Match | null {
+export function matchProduct(
+  receiptName: string,
+  products: Product[],
+  aliases: Map<string, string>,
+  barcode: string | null = null,
+  barcodes: Map<string, string> = new Map(),
+): Match | null {
+  // o codigo de barras (EAN) do XML e a ligacao mais segura
+  const byBarcode = barcode ? barcodes.get(barcode) : undefined;
+  if (byBarcode) {
+    const p = products.find((x) => x.id === byBarcode);
+    if (p) return { product: p, how: "barcode" };
+  }
   const byAlias = aliases.get(aliasKey(receiptName));
   if (byAlias) {
     const p = products.find((x) => x.id === byAlias);
@@ -82,6 +94,6 @@ export function receiptUrlOf(qrText: string): string | null {
 export interface Receipt {
   store: string | null;
   date: string | null; // YYYY-MM-DD
-  items: { name: string; quantity: number; unit: string; unit_price: number }[];
+  items: { name: string; quantity: number; unit: string; unit_price: number; barcode?: string | null }[];
   total: number | null;
 }
