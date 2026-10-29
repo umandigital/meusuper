@@ -178,3 +178,5 @@ select.mini { width: auto; max-width: 55%; padding: 6px 10px; font-size: 13px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
 .cards li.tut { align-items: flex-start; gap: 14px; padding: 16px; }
 .tut p { margin: 4px 0 0; color: hsl(var(--muted-foreground)); font-size: 14px; line-height: 1.45; }
+
+.compare-stores { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; }

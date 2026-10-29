@@ -6,13 +6,15 @@ import BarcodeScanner from "../components/BarcodeScanner";
 import NewCodeSheet, { type NewCodeResult } from "../components/NewCodeSheet";
 import { createBrand, findOrCreateBrand, listBrands } from "../services/catalog";
 import { findByBarcode, saveBarcode } from "../services/barcode";
-import { addItem, getList, getListItems, getPrices, removeItem, setListStore, updateItem, type ListItemWithProduct } from "../services/lists";
+import { addItem, getBrandLinks, getList, getListItems, getPrices, removeItem, setListStore, updateItem, type ListItemWithProduct } from "../services/lists";
 import { finishPurchase } from "../services/purchases";
 import { estimateUnitPrice, summarize } from "../lib/estimate";
 import { formatBRL } from "../lib/format";
+import { brandOptions } from "../lib/brands";
+import { listAsText } from "../lib/share";
 import { SECTORS } from "../lib/sectors";
 import { STORES, type StoreName } from "../lib/stores";
-import type { Price } from "../types/db";
+import type { Brand, Price } from "../types/db";
 
 const NEW_BRAND = "__new__";
 
@@ -31,6 +33,9 @@ export default function ListDetail() {
   const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: listBrands });
   const productIds = useMemo(() => [...new Set(items.map((i) => i.product_id))], [items]);
   const { data: prices = [] } = useQuery({ queryKey: ["prices", productIds], queryFn: () => getPrices(productIds), enabled: productIds.length > 0 });
+
+  const { data: links = [] } = useQuery({ queryKey: ["brand-links", productIds], queryFn: () => getBrandLinks(productIds), enabled: productIds.length > 0 });
+  const storeName = list?.store ?? null;
 
   // o leitor chama estas funcoes de dentro de um callback: precisam enxergar sempre o estado atual
   const itemsRef = useRef(items);
@@ -61,9 +66,13 @@ export default function ListDetail() {
   const del = useMutation({ mutationFn: removeItem, onSuccess: refresh });
   const changeStore = useMutation({ mutationFn: (s: StoreName) => setListStore(id, s), onSuccess: () => qc.invalidateQueries({ queryKey: ["list", id] }) });
 
-  const totals = summarize(items.map((i) => ({ product: i.product, brandId: i.brand_id, quantity: i.quantity })), prices);
+  const estItems = items.map((i) => ({ product: i.product, brandId: i.brand_id, quantity: i.quantity }));
+  const totals = summarize(estItems, prices, new Date(), storeName);
+  const perStore = STORES.map((s) => ({ store: s, total: summarize(estItems, prices, new Date(), s).total }));
+  const cheaper = perStore[0].total <= perStore[1].total ? perStore[0] : perStore[1];
+  const spread = Math.abs(perStore[0].total - perStore[1].total);
 
-  const unitFor = (i: ListItemWithProduct) => i.paid_price ?? estimateUnitPrice(i.product, i.brand_id, prices).unit;
+  const unitFor = (i: ListItemWithProduct) => i.paid_price ?? estimateUnitPrice(i.product, i.brand_id, prices, new Date(), storeName).unit;
   const inCart = items.filter((i) => i.checked);
   const cartTotal = inCart.reduce((sum, i) => sum + unitFor(i) * i.quantity, 0);
 
@@ -132,6 +141,32 @@ export default function ListDetail() {
     }
   }
 
+  async function shareList() {
+    if (!list) return;
+    const text = listAsText(
+      list.name,
+      list.store,
+      items.map((i) => ({
+        name: i.product.name,
+        sector: i.product.sector,
+        quantity: Number(i.quantity),
+        unit: i.product.unit,
+        brand: brands.find((b) => b.id === i.brand_id)?.name ?? null,
+        checked: i.checked,
+      })),
+      totals.total,
+    );
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+      }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
   const finish = useMutation({
     mutationFn: () =>
       finishPurchase(
@@ -185,10 +220,18 @@ export default function ListDetail() {
             </div>
           </>
         )}
+        {items.length > 0 && spread >= 0.01 && (
+          <div className="small compare-stores">
+            {perStore.map((p) => <span key={p.store} className={p.store === cheaper.store ? "ok" : "muted"}>{p.store} {formatBRL(p.total)}</span>)}
+            <span className="muted">· {cheaper.store} sai {formatBRL(spread)} mais barato</span>
+          </div>
+        )}
         {inCart.length > 0 && (
           <div className="cart">🛒 No carrinho: <strong>{formatBRL(cartTotal)}</strong> ({inCart.length} de {items.length})</div>
         )}
       </section>
+
+      {items.length > 0 && <button type="button" className="link" onClick={shareList}>📤 Compartilhar lista</button>}
 
       <div className="search-row">
         <ProductSearch onPick={(p) => add.mutate(p.id)} />
@@ -207,6 +250,8 @@ export default function ListDetail() {
                 item={item}
                 prices={prices}
                 brands={brands}
+                links={links}
+                storeName={storeName}
                 onBrand={(v) => changeBrand(item, v)}
                 onQty={(q) => q > 0 && patch.mutate({ id: item.id, p: { quantity: q } })}
                 onCheck={(c) => patch.mutate({ id: item.id, p: { checked: c } })}
@@ -236,15 +281,18 @@ export default function ListDetail() {
 function ItemRow(props: {
   item: ListItemWithProduct;
   prices: Price[];
-  brands: { id: string; name: string }[];
+  brands: Brand[];
+  links: { product_id: string; brand_id: string | null }[];
+  storeName: string | null;
   onBrand: (value: string) => void;
   onQty: (q: number) => void;
   onCheck: (c: boolean) => void;
   onPaid: (v: number | null) => void;
   onRemove: () => void;
 }) {
-  const { item, prices, brands } = props;
-  const e = estimateUnitPrice(item.product, item.brand_id, prices);
+  const { item, prices, brands, links, storeName } = props;
+  const e = estimateUnitPrice(item.product, item.brand_id, prices, new Date(), storeName);
+  const opts = brandOptions(item.product_id, item.brand_id, brands, links, prices);
   const unit = item.paid_price ?? e.unit;
   const step = item.product.unit === "kg" || item.product.unit === "l" ? 0.5 : 1;
   const hint =
@@ -269,9 +317,16 @@ function ItemRow(props: {
       <div className="meta">
         <select value={item.brand_id ?? ""} onChange={(ev) => props.onBrand(ev.target.value)} aria-label="Marca">
           <option value="">Qualquer marca</option>
-          {brands.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
+          {opts.mine.length > 0 && (
+            <optgroup label="Deste produto">
+              {opts.mine.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </optgroup>
+          )}
+          {opts.others.length > 0 && (
+            <optgroup label="Outras marcas">
+              {opts.others.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </optgroup>
+          )}
           <option value={NEW_BRAND}>＋ Nova marca…</option>
         </select>
         <div className="qty">

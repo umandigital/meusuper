@@ -39,3 +39,35 @@ eq(average(122, 2), 61, "estatisticas: ticket medio"); eq(average(10, 0), 0, "es
 eq(change(5000, 4000), 25, "estatisticas: variacao +25%"); eq(change(10, 0), null, "estatisticas: sem base de comparacao");
 const periodos: any = [{ start: "2026-09-10", end: "2026-10-09" }, { start: "2026-10-10", end: "2026-11-09" }];
 eq([bucketOf("2026-10-09", periodos), bucketOf("2026-10-10", periodos), bucketOf("2026-11-10", periodos)], [0, 1, -1], "estatisticas: data cai no periodo certo (limites)");
+
+// --- estimativa por mercado
+const px = (brand: string | null, price: number, d: string, store: string | null): any => ({ id: Math.random() + "", product_id: "p1", brand_id: brand, price, paid_at: d, store: store ? { name: store } : null });
+const hist = [px("A", 30, "2026-10-20", "Nicolini"), px("A", 26, "2026-10-22", "Peruzzo"), px("B", 24, "2026-10-21", "Peruzzo")];
+eq(estimateUnitPrice(prod, "A", hist, today, "Nicolini").unit, 30, "mercado: marca A no Nicolini = 30");
+eq(estimateUnitPrice(prod, "A", hist, today, "Peruzzo").unit, 26, "mercado: marca A no Peruzzo = 26");
+eq(estimateUnitPrice(prod, "A", hist, today, null).unit, 26, "mercado: sem mercado usa o preco mais recente da marca");
+eq(estimateUnitPrice(prod, "B", hist, today, "Nicolini").unit, 24, "mercado: marca B so existe no Peruzzo -> usa a marca em outro mercado");
+eq(estimateUnitPrice(prod, null, hist, today, "Nicolini").unit, 30, "mercado: sem marca no Nicolini = so o que existe la");
+eq(estimateUnitPrice(prod, null, hist, today, "Peruzzo").unit, 25, "mercado: sem marca no Peruzzo = mediana de 26 e 24");
+eq(estimateUnitPrice(prod, null, hist, today, "Outro").unit, 25, "mercado: mercado sem historico cai para o geral (mediana do ultimo preco de cada marca)");
+const mini = (store: string | null) => summarize([{ product: prod, brandId: "A", quantity: 2 }], hist, today, store).total;
+eq([mini("Nicolini"), mini("Peruzzo")], [60, 52], "mercado: total da lista muda conforme o mercado");
+
+import { brandOptions } from "../src/lib/brands.ts";
+const bs: any = [{ id: "A", name: "Tio Joao" }, { id: "B", name: "Camil" }, { id: "C", name: "Prato Fino" }];
+const bo = brandOptions("p1", null, bs, [{ product_id: "p1", brand_id: "C" }], [px("A", 30, "2026-10-20", null)]);
+eq([bo.mine.map((b: any) => b.id), bo.others.map((b: any) => b.id)], [["A", "C"], ["B"]], "marcas: as ja usadas no produto vem primeiro");
+eq(brandOptions("p1", "B", bs, [], []).mine.map((b: any) => b.id), ["B"], "marcas: a marca atual do item sempre aparece");
+eq(brandOptions("p2", null, bs, [], [px("A", 1, "2026-10-20", null)]).mine, [], "marcas: historico de outro produto nao conta");
+
+import { listAsText } from "../src/lib/share.ts";
+const shared = listAsText("29/10/2026 20:45", "Peruzzo", [
+  { name: "Banana", sector: "hortifruti", quantity: 1.5, unit: "kg", brand: null, checked: false },
+  { name: "Arroz branco 5kg", sector: "mercearia", quantity: 2, unit: "pct", brand: "Tio Joao", checked: true },
+  { name: "Leite integral 1L", sector: "frios", quantity: 6, unit: "l", brand: null, checked: false },
+  { name: "Café", sector: "mercearia", quantity: 1, unit: "pct", brand: null, checked: false },
+], 123.4);
+eq(shared.split("\n")[0], "🛒 *29/10/2026 20:45* — Peruzzo", "compartilhar: cabecalho com data e mercado");
+eq(shared.includes("▫️ Banana (1,5kg)") && shared.includes("✅ 2x Arroz branco 5kg — Tio Joao") && shared.includes("▫️ Leite integral 1L (6L)") && shared.includes("▫️ Café"), true, "compartilhar: itens com quantidade, marca e marcacao");
+eq(shared.indexOf("Hortifruti") < shared.indexOf("Frios") && shared.indexOf("Frios") < shared.indexOf("Mercearia"), true, "compartilhar: setores na ordem do mercado");
+eq(shared.replace(/\u00a0/g, " ").endsWith("Estimativa: R$ 123,40"), true, "compartilhar: termina com a estimativa");

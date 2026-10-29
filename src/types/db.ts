@@ -31,6 +31,8 @@ export interface Price {
   price: number;
   paid_at: string;
   source: "manual" | "scan" | "receipt";
+  /** Preenchido quando o historico e carregado com o mercado (join). */
+  store?: { name: string } | null;
 }
 
 export interface ShoppingList {

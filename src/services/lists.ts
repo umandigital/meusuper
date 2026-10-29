@@ -67,9 +67,17 @@ export async function getPrices(productIds: string[]): Promise<Price[]> {
   if (!productIds.length) return [];
   const { data, error } = await supabase
     .from("prices")
-    .select("*")
+    .select("*, store:stores(name)")
     .in("product_id", productIds)
     .order("paid_at", { ascending: false });
   if (error) throw error;
   return data as Price[];
+}
+
+/** Ligacoes produto-marca ja cadastradas (por codigo de barras), para sugerir as marcas certas. */
+export async function getBrandLinks(productIds: string[]): Promise<{ product_id: string; brand_id: string | null }[]> {
+  if (!productIds.length) return [];
+  const { data, error } = await supabase.from("product_brands").select("product_id, brand_id").in("product_id", productIds);
+  if (error) throw error;
+  return data as { product_id: string; brand_id: string | null }[];
 }
