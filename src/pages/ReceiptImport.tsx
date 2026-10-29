@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -26,15 +26,18 @@ const MESSAGES: Record<ReceiptError, string> = {
 export default function ReceiptImport() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { data: products = [] } = useQuery({ queryKey: ["products"], queryFn: listProducts });
-  const { data: aliases = new Map<string, string>() } = useQuery({ queryKey: ["aliases"], queryFn: getAliases });
+  const productsQ = useQuery({ queryKey: ["products"], queryFn: listProducts });
+  const aliasesQ = useQuery({ queryKey: ["aliases"], queryFn: getAliases });
+  const dataReady = productsQ.isSuccess && aliasesQ.isSuccess;
+  const products = useMemo(() => productsQ.data ?? [], [productsQ.data]);
+  const aliases = useMemo(() => aliasesQ.data ?? new Map<string, string>(), [aliasesQ.data]);
 
   const [scanning, setScanning] = useState(false);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [receipt, setReceipt] = useState<(Receipt & { key: string | null }) | null>(null);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [overrides, setOverrides] = useState<Record<number, Choice>>({});
   const [store, setStore] = useState("");
   const [date, setDate] = useState("");
 
@@ -49,17 +52,8 @@ export default function ReceiptImport() {
     setLoading(true);
     try {
       const r = await fetchReceipt(url);
+      setOverrides({});
       setReceipt({ ...r, key: accessKeyOf(url) });
-      setRows(
-        r.items.map((i) => {
-          const m = matchProduct(i.name, products, aliases);
-          return {
-            ...i,
-            suggested: m?.product ?? null,
-            choice: m ? { kind: "product", product: m.product } : { kind: "new", name: titleCase(i.name), sector: "outros" },
-          };
-        }),
-      );
       const s = (r.store ?? "").toLowerCase();
       setStore(s.includes("nicolini") ? "Nicolini" : s.includes("peruzzo") ? "Peruzzo" : "");
       setDate(r.date ?? new Date().toISOString().slice(0, 10));
@@ -70,7 +64,17 @@ export default function ReceiptImport() {
     }
   }
 
-  const setChoice = (i: number, choice: Choice) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, choice } : r)));
+  // a sugestao e calculada aqui, so quando a nota E o catalogo ja chegaram; o que voce muda fica em `overrides`
+  const rows: Row[] = useMemo(
+    () =>
+      (receipt?.items ?? []).map((it, i) => {
+        const m = matchProduct(it.name, products, aliases);
+        const fallback: Choice = m ? { kind: "product", product: m.product } : { kind: "new", name: titleCase(it.name), sector: "outros" };
+        return { ...it, suggested: m?.product ?? null, choice: overrides[i] ?? fallback };
+      }),
+    [receipt, products, aliases, overrides],
+  );
+  const setChoice = (i: number, choice: Choice) => setOverrides((o) => ({ ...o, [i]: choice }));
   const included = rows.filter((r) => r.choice.kind !== "skip");
   const total = included.reduce((s, r) => s + r.quantity * r.unit_price, 0);
   const ready = !!receipt && included.length > 0 && !!date && rows.every((r) => r.choice.kind !== "pick" && (r.choice.kind !== "new" || r.choice.name.trim() !== ""));
@@ -102,11 +106,12 @@ export default function ReceiptImport() {
       {!receipt && (
         <section className="panel">
           <p className="muted small">Leia o QR Code da nota fiscal (NFC-e) do mercado. Os itens e preços entram como uma compra.</p>
-          <button type="button" className="primary" onClick={() => { setError(""); setScanning(true); }} disabled={loading}>📷 Ler QR Code da nota</button>
+          <button type="button" className="primary" onClick={() => { setError(""); setScanning(true); }} disabled={loading || !dataReady}>📷 Ler QR Code da nota</button>
           <form className="row tight" onSubmit={(e) => { e.preventDefault(); void load(link); }}>
             <input placeholder="ou cole o link da nota" value={link} onChange={(e) => setLink(e.target.value)} aria-label="Link da nota" />
-            <button type="submit" disabled={!link.trim() || loading}>Buscar</button>
+            <button type="submit" disabled={!link.trim() || loading || !dataReady}>Buscar</button>
           </form>
+          {!dataReady && <p className="muted small">Carregando seus produtos…</p>}
           {loading && <p className="muted">Buscando a nota…</p>}
           {error && <p className="error">{error}</p>}
         </section>

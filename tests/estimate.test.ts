@@ -78,6 +78,7 @@ const cat: any = [
   { id: "3", user_id: null, name: "Leite integral 1L" }, { id: "4", user_id: null, name: "Banana" },
   { id: "5", user_id: null, name: "Feijão preto 1kg" }, { id: "6", user_id: null, name: "Leite integral caixa 12 unidades" },
   { id: "7", user_id: null, name: "Refrigerante cola 2L" }, { id: "8", user_id: null, name: "Açúcar refinado 1kg" },
+  { id: "9", user_id: null, name: "Leite desnatado 1L" }, { id: "10", user_id: null, name: "Refrigerante guaraná 2L" },
 ];
 const m = (n: string, al: Map<string, string> = new Map()) => matchProduct(n, cat, al)?.product.name ?? null;
 eq(normalizeText("LEITE INT. 1 L Piracanjuba"), "leite int. 1l piracanjuba".replace("int.", "int"), "nota: normaliza tamanho e pontuacao");
@@ -85,6 +86,9 @@ eq(m("ARROZ TIO JOAO TP1 5KG"), "Arroz branco 5kg", "nota: arroz 5kg liga ao arr
 eq(m("ARROZ CAMIL 1 KG"), "Arroz branco 1kg", "nota: arroz 1kg nao vira 5kg");
 eq(m("LEITE INTEGRAL UHT PIRACANJUBA 1L"), "Leite integral 1L", "nota: leite integral 1L");
 eq(m("BANANA PRATA KG"), "Banana", "nota: banana");
+eq(m("LEITE INT PIRACANJUBA 1L"), "Leite integral 1L", "nota: abreviacao INT = integral (nao confunde com desnatado)");
+eq(m("LEITE DESN ITALAC 1L"), "Leite desnatado 1L", "nota: abreviacao DESN = desnatado");
+eq(m("REFRIG GUARANA ANTARCTICA 2L"), "Refrigerante guaraná 2L", "nota: REFRIG = refrigerante e sabor certo");
 eq(m("REFRIG COCA COLA 2L"), "Refrigerante cola 2L", "nota: abreviacao + marca ainda casa pelas palavras em comum");
 eq(m("SUCO DEL VALLE UVA 1L"), null, "nota: sem palavras suficientes em comum nao casa (usuario decide)");
 eq(m("FEIJAO PRETO CAMIL 1KG"), "Feijão preto 1kg", "nota: acento e maiuscula nao atrapalham");

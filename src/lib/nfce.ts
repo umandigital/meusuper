@@ -39,13 +39,16 @@ export function matchProduct(receiptName: string, products: Product[], aliases: 
     const p = products.find((x) => x.id === byAlias);
     if (p) return { product: p, how: "alias" };
   }
-  const rt = new Set(tokens(receiptName));
-  if (!rt.size) return null;
+  const rt = tokens(receiptName);
+  if (!rt.length) return null;
+  const rset = new Set(rt);
+  // abreviacao de nota: "int" cobre "integral", "refrig" cobre "refrigerante" (so palavras, nao tamanhos como 5kg)
+  const covers = (t: string) => rset.has(t) || (!/\d/.test(t) && rt.some((r) => r.length >= 3 && r !== t && !/\d/.test(r) && t.startsWith(r)));
   let best: { p: Product; common: number; size: number; own: boolean } | null = null;
   for (const p of products) {
     const pt = tokens(p.name);
     if (!pt.length) continue;
-    const common = pt.filter((t) => rt.has(t)).length;
+    const common = pt.filter(covers).length;
     if (common < Math.max(1, Math.ceil(pt.length * 0.6)) || common < pt.length - 1) continue;
     const cand = { p, common, size: pt.length, own: !!p.user_id };
     if (
