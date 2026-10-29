@@ -71,3 +71,56 @@ eq(shared.split("\n")[0], "🛒 *29/10/2026 20:45* — Peruzzo", "compartilhar: 
 eq(shared.includes("▫️ Banana (1,5kg)") && shared.includes("✅ 2x Arroz branco 5kg — Tio Joao") && shared.includes("▫️ Leite integral 1L (6L)") && shared.includes("▫️ Café"), true, "compartilhar: itens com quantidade, marca e marcacao");
 eq(shared.indexOf("Hortifruti") < shared.indexOf("Frios") && shared.indexOf("Frios") < shared.indexOf("Mercearia"), true, "compartilhar: setores na ordem do mercado");
 eq(shared.replace(/\u00a0/g, " ").endsWith("Estimativa: R$ 123,40"), true, "compartilhar: termina com a estimativa");
+
+import { matchProduct, aliasKey, accessKeyOf, receiptUrlOf, normalizeText } from "../src/lib/nfce.ts";
+const cat: any = [
+  { id: "1", user_id: null, name: "Arroz branco 5kg" }, { id: "2", user_id: null, name: "Arroz branco 1kg" },
+  { id: "3", user_id: null, name: "Leite integral 1L" }, { id: "4", user_id: null, name: "Banana" },
+  { id: "5", user_id: null, name: "Feijão preto 1kg" }, { id: "6", user_id: null, name: "Leite integral caixa 12 unidades" },
+  { id: "7", user_id: null, name: "Refrigerante cola 2L" }, { id: "8", user_id: null, name: "Açúcar refinado 1kg" },
+];
+const m = (n: string, al: Map<string, string> = new Map()) => matchProduct(n, cat, al)?.product.name ?? null;
+eq(normalizeText("LEITE INT. 1 L Piracanjuba"), "leite int. 1l piracanjuba".replace("int.", "int"), "nota: normaliza tamanho e pontuacao");
+eq(m("ARROZ TIO JOAO TP1 5KG"), "Arroz branco 5kg", "nota: arroz 5kg liga ao arroz 5kg");
+eq(m("ARROZ CAMIL 1 KG"), "Arroz branco 1kg", "nota: arroz 1kg nao vira 5kg");
+eq(m("LEITE INTEGRAL UHT PIRACANJUBA 1L"), "Leite integral 1L", "nota: leite integral 1L");
+eq(m("BANANA PRATA KG"), "Banana", "nota: banana");
+eq(m("REFRIG COCA COLA 2L"), "Refrigerante cola 2L", "nota: abreviacao + marca ainda casa pelas palavras em comum");
+eq(m("SUCO DEL VALLE UVA 1L"), null, "nota: sem palavras suficientes em comum nao casa (usuario decide)");
+eq(m("FEIJAO PRETO CAMIL 1KG"), "Feijão preto 1kg", "nota: acento e maiuscula nao atrapalham");
+eq(m("ACUCAR REFINADO UNIAO 1KG"), "Açúcar refinado 1kg", "nota: acucar sem acento");
+eq(m("SHAMPOO XYZ 350ML"), null, "nota: produto desconhecido nao casa");
+eq(m("XPTO 123 ESPECIAL", new Map([[aliasKey("XPTO 123 ESPECIAL"), "5"]])), "Feijão preto 1kg", "nota: alias lembrado tem prioridade (e funciona mesmo sem palavras em comum)");
+eq(accessKeyOf("https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=43261012345678901234567890123456789012345678|2|1|1|ABC"), "43261012345678901234567890123456789012345678", "nota: extrai a chave de 44 digitos");
+eq(accessKeyOf("https://x.com/?p=123"), null, "nota: sem chave");
+eq(receiptUrlOf("https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=1"), "https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=1", "nota: link da SEFAZ-RS aceito");
+eq(receiptUrlOf("https://evil.example.com/?u=sefaz.rs.gov.br"), null, "nota: dominio estranho recusado");
+eq(receiptUrlOf("https://sefaz.rs.gov.br.evil.com/x"), null, "nota: dominio disfarcado recusado");
+eq(receiptUrlOf("texto qualquer"), null, "nota: texto sem link");
+
+import { parseNfce, isAllowedUrl } from "../api/nfce.ts";
+// Trecho no layout padrao de consulta publica de NFC-e (modelado, nao capturado de uma nota real).
+const html = `<html><body>
+<div id="u20" class="txtTopo">SUPERMERCADO NICOLINI LTDA</div>
+<table id="tabResult">
+<tr id="Item + 1"><td><span class="txtTit">ARROZ TIO JOAO TP1 5KG</span><span class="RCod">(Código: 123)</span><br/>
+<span class="Rqtd"><strong>Qtde.:</strong>2,0000</span><span class="RUN"><strong>UN: </strong>UN</span><span class="RvlUnit"><strong>Vl. Unit.:</strong>&nbsp;&nbsp;31,50</span></td><td class="txtTit noWrap">Vl. Total<br/><span class="valor">63,00</span></td></tr>
+<tr id="Item + 2"><td><span class="txtTit">BANANA PRATA KG</span>
+<span class="Rqtd"><strong>Qtde.:</strong>1,3500</span><span class="RUN"><strong>UN: </strong>KG</span><span class="RvlUnit"><strong>Vl. Unit.:</strong> 6,99</span></td><td><span class="valor">9,44</span></td></tr>
+<tr id="Item + 3"><td><span class="txtTit">LEITE INT PIRACANJUBA &amp; CIA 1L</span>
+<span class="Rqtd"><strong>Qtde.:</strong>6,0000</span><span class="RUN"><strong>UN: </strong>UN</span></td><td><span class="valor">34,74</span></td></tr>
+<tr><td><span class="txtTit">ITEM SEM QUANTIDADE</span></td></tr>
+</table>
+<div><strong>Emissão: </strong>28/10/2026 20:41:03 - Via Consumidor</div>
+<div id="totalNota"><label>Valor total R$</label><span class="totalNumb txtMax">107,18</span></div>
+</body></html>`;
+const rc = parseNfce(html);
+eq(rc.store, "SUPERMERCADO NICOLINI LTDA", "leitor da nota: nome do mercado");
+eq(rc.date, "2026-10-28", "leitor da nota: data de emissao");
+eq(rc.total, 107.18, "leitor da nota: total");
+eq(rc.items.length, 3, "leitor da nota: 3 itens (o sem quantidade e ignorado)");
+eq(rc.items[0], { name: "ARROZ TIO JOAO TP1 5KG", quantity: 2, unit: "UN", unit_price: 31.5 }, "leitor da nota: item por unidade");
+eq(rc.items[1], { name: "BANANA PRATA KG", quantity: 1.35, unit: "KG", unit_price: 6.99 }, "leitor da nota: item por peso (kg)");
+eq(rc.items[2].name + "|" + rc.items[2].unit_price, "LEITE INT PIRACANJUBA & CIA 1L|5.79", "leitor da nota: sem valor unitario usa total/qtd e decodifica &amp;");
+eq(parseNfce("<html>pagina qualquer</html>").items.length, 0, "leitor da nota: pagina diferente nao inventa itens");
+eq([isAllowedUrl("https://www.sefaz.rs.gov.br/NFCE/x")?.hostname, isAllowedUrl("http://www.sefaz.rs.gov.br/x"), isAllowedUrl("https://sefaz.rs.gov.br.evil.com/"), isAllowedUrl("https://127.0.0.1/")], ["www.sefaz.rs.gov.br", null, null, null], "funcao: so https e so dominios da SEFAZ");

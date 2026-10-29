@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
 import History from "./pages/History";
 import PurchaseEdit from "./pages/PurchaseEdit";
+import ReceiptImport from "./pages/ReceiptImport";
 import Lists from "./pages/Lists";
 import ListDetail from "./pages/ListDetail";
 import Planning from "./pages/Planning";
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/expenses" element={<Expenses />} />
       <Route path="/history" element={<History />} />
       <Route path="/history/:id" element={<PurchaseEdit />} />
+      <Route path="/import" element={<ReceiptImport />} />
       <Route path="/lists" element={<Lists />} />
       <Route path="/lists/:id" element={<ListDetail />} />
       <Route path="/planning" element={<Planning />} />

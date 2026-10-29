@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /** Camera + leitura de EAN/UPC. Fica aberta para ler varios produtos em sequencia. */
-export default function BarcodeScanner({ onCode, onClose, notice }: { onCode: (code: string) => void; onClose: () => void; notice: string }) {
+export default function BarcodeScanner({ onCode, onClose, notice, kind = "product" }: { onCode: (code: string) => void; onClose: () => void; notice: string; kind?: "product" | "qr" }) {
   const video = useRef<HTMLVideoElement>(null);
   const last = useRef({ code: "", at: 0 });
   const handler = useRef(onCode);
@@ -16,7 +16,10 @@ export default function BarcodeScanner({ onCode, onClose, notice }: { onCode: (c
         const { BrowserMultiFormatReader } = await import("@zxing/browser");
         const { DecodeHintType, BarcodeFormat } = await import("@zxing/library");
         const hints = new Map();
-        hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E]);
+        hints.set(
+          DecodeHintType.POSSIBLE_FORMATS,
+          kind === "qr" ? [BarcodeFormat.QR_CODE] : [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E],
+        );
         const reader = new BrowserMultiFormatReader(hints);
         const controls = await reader.decodeFromConstraints(
           { video: { facingMode: { ideal: "environment" } }, audio: false },
@@ -45,9 +48,9 @@ export default function BarcodeScanner({ onCode, onClose, notice }: { onCode: (c
   return (
     <div className="scanner">
       <video ref={video} muted playsInline />
-      <div className="scan-frame" />
+      <div className={`scan-frame${kind === "qr" ? " qr" : ""}`} />
       <div className="scan-top">
-        <span>{notice || "Aponte para o código de barras"}</span>
+        <span>{notice || (kind === "qr" ? "Aponte para o QR Code da nota" : "Aponte para o código de barras")}</span>
         <button type="button" onClick={onClose}>Fechar</button>
       </div>
       {error && <p className="scan-error">{error}</p>}

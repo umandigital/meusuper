@@ -11,6 +11,7 @@ export default function History() {
   return (
     <main>
       <h1>Histórico</h1>
+      <Link to="/import" className="link">🧾 Importar nota fiscal</Link>
       {isLoading && <p className="muted">Carregando…</p>}
       {!isLoading && !purchases.length && <p className="muted">Nenhuma compra ainda. Finalize uma lista para ela aparecer aqui.</p>}
       <ul className="cards">
