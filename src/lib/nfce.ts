@@ -66,7 +66,7 @@ export function matchProduct(
     const pt = tokens(p.name);
     if (!pt.length) continue;
     // o preco so e comparavel se a unidade for a mesma: item por KG so liga a produto por kg (nunca um pacote de 300g a "queijo por kg")
-    if (receiptUnit && !unitCompatible(receiptUnit, p.unit)) continue;
+    if (receiptUnit && !unitCompatible(receiptUnit, p.unit, p.unit_weight_g ?? null)) continue;
     // na nota a 1a palavra diz o que o produto e (molho, suco, chocolate): "MOLHO TOMATE..." nao e "Tomate"
     if (!(pt[0] === rt[0] || (rt[0].length >= 3 && !/\d/.test(rt[0]) && pt[0].startsWith(rt[0])))) continue;
     const psizes = pt.filter(isSize);
@@ -98,11 +98,21 @@ function truncatedAlias(norm: string, aliases: Map<string, string>): string | un
 }
 
 /** Unidade da nota (UN, KG, L...) x unidade do produto (un, pct, kg, l). */
-export function unitCompatible(receiptUnit: string, productUnit: string): boolean {
+export function unitCompatible(receiptUnit: string, productUnit: string, unitWeightG: number | null = null): boolean {
   const u = receiptUnit.toUpperCase();
-  if (u === "KG") return productUnit === "kg";
+  // item pesado na balanca (KG) tambem liga a produto em unidade que tem peso medio (pao, banana): vira unidades
+  if (u === "KG") return productUnit === "kg" || (productUnit === "un" && !!unitWeightG && unitWeightG > 0);
   if (u === "L" || u === "LT" || u === "LTS") return productUnit === "l";
   return productUnit === "un" || productUnit === "pct" || productUnit === "l";
+}
+
+/**
+ * Linha da nota em KG -> unidades de um produto com peso medio por unidade.
+ * 0,66 kg a R$ 15,98/kg de um pao de 50 g = 13 paes; o preco por unidade e o gasto da linha dividido pelas unidades.
+ */
+export function kgToUnits(quantityKg: number, pricePerKg: number, unitWeightG: number): { quantity: number; unit_price: number } {
+  const units = Math.max(1, Math.round((quantityKg * 1000) / unitWeightG));
+  return { quantity: units, unit_price: Math.round(((quantityKg * pricePerKg) / units) * 100) / 100 };
 }
 
 /** Setor provavel de um produto novo, pelas primeiras palavras do nome na nota. */

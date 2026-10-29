@@ -311,7 +311,9 @@ function ItemRow(props: {
   const e = estimateUnitPrice(item.product, item.brand_id, prices, new Date(), storeName);
   const opts = brandOptions(item.product_id, item.brand_id, brands, links, prices);
   const unit = item.paid_price ?? e.unit;
-  const step = item.product.unit === "kg" || item.product.unit === "l" ? 0.5 : 1;
+  // por peso, de 100 em 100 g (fatiados e carnes se pedem em gramas); o resto, de 1 em 1
+  const step = item.product.unit === "kg" ? 0.1 : 1;
+  const bump = (q: number, d: number) => Math.round((q + d) * 1000) / 1000;
   const hint =
     item.paid_price != null ? "preço pago" : e.source === "none" ? "sem preço" : e.source === "reference" ? "estimado" : e.fresh ? "" : "preço antigo";
 
@@ -347,9 +349,9 @@ function ItemRow(props: {
           <option value={NEW_BRAND}>+ Nova marca…</option>
         </select>
         <div className="qty">
-          <button type="button" onClick={() => props.onQty(item.quantity - step)} aria-label="Menos">−</button>
+          <button type="button" onClick={() => props.onQty(bump(Number(item.quantity), -step))} aria-label="Menos">−</button>
           <span>{item.quantity}{item.product.unit === "kg" ? "kg" : item.product.unit === "l" ? "L" : ""}</span>
-          <button type="button" onClick={() => props.onQty(item.quantity + step)} aria-label="Mais">+</button>
+          <button type="button" onClick={() => props.onQty(bump(Number(item.quantity), step))} aria-label="Mais">+</button>
         </div>
       </div>
       {item.checked && (

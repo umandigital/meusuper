@@ -548,3 +548,14 @@ eq(mt("MASSA INST NISS", "UN") === null && matchProduct("MASSA INST NISS", cat2,
 eq(mt("COISA ESTRANHA XY"), null, "PDF cortado: sem historico nao liga");
 // DANFE: nome da loja acima do CNPJ
 eq(parseCupomText("OSMAR NICOLINI COMERCIO E DISTRIBUICAO S.A.\nCNPJ 89.835.672/0035-70\nPAO KG\n001 0.5 KG x R$ 10,00 5,00")?.store, "OSMAR NICOLINI COMERCIO E DISTRIBUICAO S.A.", "DANFE: loja pela linha acima do CNPJ");
+
+import { kgToUnits } from "../src/lib/nfce.ts";
+// ---- produtos por unidade com peso medio (pao, banana): a nota vem em KG e o app grava em unidades
+eq(kgToUnits(0.66, 15.98, 50), { quantity: 13, unit_price: 0.81 }, "kg->un: 0,66 kg de pao (50 g) = 13 paes a R$ 0,81 (gasto da linha preservado: R$ 10,55)");
+eq(kgToUnits(1.35, 6.99, 120), { quantity: 11, unit_price: 0.86 }, "kg->un: 1,35 kg de banana (120 g) = 11 bananas");
+eq(kgToUnits(0.02, 16.9, 50).quantity, 1, "kg->un: nunca menos de 1 unidade");
+eq(kgToUnits(5.8, 3.99, 6000), { quantity: 1, unit_price: 23.14 }, "kg->un: melancia de 5,8 kg = 1 melancia");
+eq([unitCompatible("KG", "un", 50), unitCompatible("KG", "un", null), unitCompatible("KG", "kg", null), unitCompatible("UN", "un", 50)], [true, false, true, true], "unidade: KG liga a produto em unidade SO se ele tem peso medio");
+const catPao: any = [{ id: "p", user_id: null, name: "Pão francês", unit: "un", unit_weight_g: 50 }, { id: "q", user_id: null, name: "Queijo prato fatiado", unit: "kg", unit_weight_g: null }];
+eq(matchProduct("PAO FRANCES CACETINHO KG", catPao, new Map(), null, new Map(), "KG")?.product.name, "Pão francês", "nota em KG liga ao pao francês (agora por unidade)");
+eq(matchProduct("PAO FRANCES 6 UNIDADES", catPao, new Map(), null, new Map(), "UN")?.product.name, "Pão francês", "nota em UN tambem liga ao pao francês");

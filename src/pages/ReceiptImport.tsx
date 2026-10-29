@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import BarcodeScanner from "../components/BarcodeScanner";
 import ProductSearch from "../components/ProductSearch";
-import { accessKeyOf, aliasKey, guessSector, matchProduct, receiptUrlOf, type Receipt } from "../lib/nfce";
+import { accessKeyOf, aliasKey, guessSector, kgToUnits, matchProduct, receiptUrlOf, type Receipt } from "../lib/nfce";
 import { SECTORS } from "../lib/sectors";
 import { STORES } from "../lib/stores";
 import { formatBRL } from "../lib/format";
@@ -156,8 +156,10 @@ export default function ReceiptImport() {
         date,
         receipt!.key,
         included.map((r) => {
-          const base = { alias: aliasKey(r.name), barcode: r.barcode ?? null, quantity: r.quantity, unit_price: r.unit_price };
           const c = r.choice;
+          // item pesado (KG) de produto que se pede em unidade (pao, banana): grava em unidades
+          const conv = c.kind === "product" && r.unit === "KG" && c.product.unit_weight_g ? kgToUnits(r.quantity, r.unit_price, Number(c.product.unit_weight_g)) : null;
+          const base = { alias: aliasKey(r.name), barcode: r.barcode ?? null, quantity: conv?.quantity ?? r.quantity, unit_price: conv?.unit_price ?? r.unit_price };
           return c.kind === "product" ? { ...base, product_id: c.product.id } : { ...base, new_name: (c as { name: string }).name.trim(), new_sector: (c as { sector: string }).sector, new_unit: unitOf(r.unit) };
         }),
       ),
@@ -227,7 +229,11 @@ export default function ReceiptImport() {
           <ul className="items">
             {rows.map((r, i) => (
               <li key={i} className="edit-row">
-                <div className="name">{r.name}<small className="muted"> · {r.quantity} {r.unit.toLowerCase()} × {formatBRL(r.unit_price)}</small></div>
+                <div className="name">{r.name}<small className="muted"> · {r.quantity} {r.unit.toLowerCase()} × {formatBRL(r.unit_price)}</small>
+                  {r.choice.kind === "product" && r.unit === "KG" && r.choice.product.unit_weight_g ? (() => {
+                    const c = kgToUnits(r.quantity, r.unit_price, Number(r.choice.product.unit_weight_g));
+                    return <small className="muted"> · vira {c.quantity} un × {formatBRL(c.unit_price)}</small>;
+                  })() : null}</div>
                 <strong>{r.choice.kind === "skip" ? "—" : formatBRL(r.quantity * r.unit_price)}</strong>
                 <div className="meta">
                   <select

@@ -82,6 +82,7 @@ export default function ProductDetail() {
         <p className="muted">
           Produto do catálogo base: {SECTORS.find((s) => s.value === product.sector)?.label} · {UNITS.find((u) => u.value === product.unit)?.label}
           {product.reference_price != null && ` · preço de referência ${formatBRL(Number(product.reference_price))}${unitSuffix(product.unit)} (estimado)`}
+          {product.unit_weight_g ? ` · pedido em unidade (1 unidade ≈ ${Number(product.unit_weight_g)} g; notas em KG são convertidas)` : ""}
           . Ele não pode ser editado, mas você pode usar à vontade e cadastrar marcas e preços.
         </p>
       )}

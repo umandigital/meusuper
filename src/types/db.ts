@@ -7,6 +7,8 @@ export interface Product {
   sector: string;
   unit: Unit;
   reference_price: number | null;
+  /** Peso medio de 1 unidade (g), quando o produto e pedido em unidade mas a nota vem em KG (pao, banana, tomate). */
+  unit_weight_g?: number | null;
 }
 
 export interface Brand {
