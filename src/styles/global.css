@@ -241,3 +241,14 @@ textarea { padding: 12px 14px; border-radius: 12px; border: 1px solid hsl(var(--
 .other-ways > summary { cursor: pointer; font-weight: 600; padding: 8px 0; min-height: 44px; display: flex; align-items: center; }
 .other-ways[open] > summary { margin-bottom: 4px; }
 .pick.review { display: grid; gap: 8px; }
+
+/* leitor: foto pelo app de camera, trocar camera e zoom */
+.scan-bottom { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: 10px; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); color: #fff; background: linear-gradient(transparent, #000c); text-align: center; }
+.scan-actions { display: flex; gap: 10px; justify-content: center; }
+.scan-actions button, .photo-btn { padding: 12px 16px; min-height: 44px; border: 0; border-radius: 12px; background: #fff; color: #000; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; cursor: pointer; }
+.photo-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.photo-btn:focus-within { outline: 3px solid hsl(var(--primary-btn)); outline-offset: 2px; }
+.scan-zoom { display: grid; gap: 4px; font-size: 13px; }
+.scan-zoom input { width: 100%; }
+.scan-error { bottom: 30%; }
+.scan-frame { pointer-events: none; }

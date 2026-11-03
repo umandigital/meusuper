@@ -4,7 +4,7 @@ type Kind = "product" | "qr";
 
 /** Leitor nativo do Android/Chrome (rapido e com bom foco); nao existe em todo navegador. */
 interface NativeDetector {
-  detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]>;
+  detect(source: HTMLVideoElement | ImageBitmap): Promise<{ rawValue: string }[]>;
 }
 declare global {
   interface Window {
@@ -22,10 +22,11 @@ function cameraMessage(e: unknown): string {
   return "Não consegui abrir a câmera. Feche o leitor e abra de novo.";
 }
 
-async function openCamera(): Promise<MediaStream> {
+async function openCamera(deviceId: string | null): Promise<MediaStream> {
   // resolucao maior deixa o codigo nitido; se o aparelho recusar, cai para o que ele tiver
+  const which: MediaTrackConstraints = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: "environment" } };
   const tries: MediaStreamConstraints[] = [
-    { video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+    { video: { ...which, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
     { video: { facingMode: { ideal: "environment" } }, audio: false },
     { video: true, audio: false },
   ];
@@ -52,6 +53,33 @@ async function keepFocus(track: MediaStreamTrack) {
   }
 }
 
+const formatsOf = (kind: Kind) => (kind === "qr" ? ["qr_code"] : ["ean_13", "ean_8", "upc_a", "upc_e"]);
+
+/** Le o codigo de uma FOTO (tirada pelo app de camera do celular, que foca bem). Devolve o texto ou null. */
+async function decodePhoto(file: File, kind: Kind): Promise<string | null> {
+  if (window.BarcodeDetector) {
+    try {
+      const hits = await new window.BarcodeDetector({ formats: formatsOf(kind) }).detect(await createImageBitmap(file));
+      if (hits[0]?.rawValue) return hits[0].rawValue;
+    } catch {
+      /* tenta o outro leitor */
+    }
+  }
+  const { BrowserMultiFormatReader } = await import("@zxing/browser");
+  const { DecodeHintType, BarcodeFormat } = await import("@zxing/library");
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, kind === "qr" ? [BarcodeFormat.QR_CODE] : [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E]);
+  hints.set(DecodeHintType.TRY_HARDER, true);
+  const url = URL.createObjectURL(file);
+  try {
+    return (await new BrowserMultiFormatReader(hints).decodeFromImageUrl(url)).getText();
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Camera + leitura de EAN/UPC ou QR. Fica aberta para ler varios produtos em sequencia. */
 export default function BarcodeScanner({ onCode, onClose, notice, kind = "product" }: { onCode: (code: string) => void; onClose: () => void; notice: string; kind?: Kind }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -59,6 +87,42 @@ export default function BarcodeScanner({ onCode, onClose, notice, kind = "produc
   const handler = useRef(onCode);
   handler.current = onCode;
   const [error, setError] = useState("");
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [cams, setCams] = useState<MediaDeviceInfo[]>([]);
+  const [zoom, setZoom] = useState<{ min: number; max: number; step: number; value: number } | null>(null);
+  const [photoMsg, setPhotoMsg] = useState("");
+  const track = useRef<MediaStreamTrack>();
+
+  async function onPhoto(file: File | undefined) {
+    if (!file) return;
+    setPhotoMsg("Lendo a foto…");
+    const code = await decodePhoto(file, kind);
+    if (code) {
+      setPhotoMsg("");
+      last.current = { code, at: Date.now() };
+      handler.current(code);
+    } else {
+      setPhotoMsg("Não consegui ler a foto. Tire de novo, enquadrando só o código, bem de frente e com boa luz.");
+    }
+  }
+
+  /** Toque na imagem: pede ao aparelho para focar de novo. */
+  async function refocus() {
+    const t = track.current;
+    try {
+      await t?.applyConstraints({ advanced: [{ focusMode: "single-shot" } as MediaTrackConstraintSet] });
+      await keepFocus(t!);
+    } catch {
+      /* aparelho sem controle de foco */
+    }
+  }
+
+  function nextCamera() {
+    if (cams.length < 2) return;
+    const current = track.current?.getSettings().deviceId;
+    const i = cams.findIndex((c) => c.deviceId === current);
+    setDeviceId(cams[(i + 1) % cams.length].deviceId);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -75,15 +139,23 @@ export default function BarcodeScanner({ onCode, onClose, notice, kind = "produc
 
     (async () => {
       try {
-        stream = await openCamera();
+        stream = await openCamera(deviceId);
         if (cancelled) return;
         const el = video.current!;
         el.srcObject = stream;
-        void keepFocus(stream.getVideoTracks()[0]);
+        const t = stream.getVideoTracks()[0];
+        track.current = t;
+        void keepFocus(t);
+        const caps = t.getCapabilities?.() as { zoom?: { min: number; max: number; step?: number } } | undefined;
+        setZoom(caps?.zoom ? { min: caps.zoom.min, max: caps.zoom.max, step: caps.zoom.step || 0.1, value: Number((t.getSettings() as { zoom?: number }).zoom ?? caps.zoom.min) } : null);
         await el.play();
+        // com a permissao dada, os nomes das cameras aparecem: guarda as traseiras para poder trocar (a ultra-wide nao foca)
+        const all = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+        const back = all.filter((d) => /back|rear|traseira|environment/i.test(d.label));
+        if (!cancelled) setCams(back.length > 1 ? back : all.length > 1 ? all : []);
 
         if (window.BarcodeDetector) {
-          const detector = new window.BarcodeDetector({ formats: kind === "qr" ? ["qr_code"] : ["ean_13", "ean_8", "upc_a", "upc_e"] });
+          const detector = new window.BarcodeDetector({ formats: formatsOf(kind) });
           const tick = async () => {
             if (cancelled) return;
             try {
@@ -122,17 +194,36 @@ export default function BarcodeScanner({ onCode, onClose, notice, kind = "produc
       stream?.getTracks().forEach((t) => t.stop());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [deviceId]);
 
   return (
     <div className="scanner">
-      <video ref={video} muted playsInline autoPlay />
+      <video ref={video} muted playsInline autoPlay onClick={() => void refocus()} />
       <div className={`scan-frame${kind === "qr" ? " qr" : ""}`} />
       <div className="scan-top">
-        <span>{notice || (kind === "qr" ? "Aponte para o QR Code da nota" : "Aponte para o código de barras")}</span>
+        <span>{notice || (kind === "qr" ? "Aponte para o QR Code. Se não ler, toque em Tirar foto" : "Aponte para o código de barras")}</span>
         <button type="button" onClick={onClose}>Fechar</button>
       </div>
       {error && <p className="scan-error">{error}</p>}
+      <div className="scan-bottom">
+        {photoMsg && <p role="status">{photoMsg}</p>}
+        {zoom && zoom.max > zoom.min && (
+          <label className="scan-zoom">Zoom
+            <input type="range" min={zoom.min} max={zoom.max} step={zoom.step} value={zoom.value} onChange={(e) => {
+              const v = Number(e.target.value);
+              setZoom({ ...zoom, value: v });
+              void track.current?.applyConstraints({ advanced: [{ zoom: v } as MediaTrackConstraintSet] });
+            }} />
+          </label>
+        )}
+        <div className="scan-actions">
+          <label className="photo-btn">
+            Tirar foto do {kind === "qr" ? "QR Code" : "código"}
+            <input type="file" accept="image/*" capture="environment" onChange={(e) => { void onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+          {cams.length > 1 && <button type="button" onClick={nextCamera}>Trocar câmera</button>}
+        </div>
+      </div>
     </div>
   );
 }
